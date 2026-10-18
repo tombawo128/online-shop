@@ -1,0 +1,183 @@
+:root {
+  --bg:#f8f8f8;
+  --text:#222222;
+  --primary:#333333;
+  --secondary:#555555;
+  --accent:#777777;
+  --border:#e0e0e0;
+  --header-bg:#fafafa;
+}
+
+
+/* Reset defaults */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+  font-family: Arial, Helvetica, sans-serif;
+}
+
+body {
+  line-height: 1.5;
+  background-color: var(--bg);
+  color: var(--text);
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+header.header {
+  background: var(--header-bg);
+  padding: 1rem;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+header .bar {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+header .logo {
+  font-size: 1.5rem;
+  font-weight: bold;
+}
+
+header .search {
+  flex: 1;
+  margin: 0 1rem;
+}
+
+header .search input {
+  width: 100%;
+  padding: 0.4rem 0.6rem;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+}
+
+header .sugg {
+  position: absolute;
+  background: #fff;
+  border: 1px solid #ccc;
+  max-height: 200px;
+  overflow-y: auto;
+  width: 100%;
+  z-index: 10;
+  list-style: none;
+  padding: 0;
+  margin-top: 0.2rem;
+}
+
+header .sugg li {
+  padding: 0.4rem 0.6rem;
+  cursor: pointer;
+}
+
+header .sugg li:hover {
+  background: #f0f0f0;
+}
+
+header .cartlink {
+  position: relative;
+}
+
+header .badge {
+  background: #ff5252;
+  color: #fff;
+  border-radius: 50%;
+  padding: 0.2rem 0.5rem;
+  font-size: 0.75rem;
+  position: absolute;
+  top: -5px;
+  right: -10px;
+}
+
+footer.footer {
+  text-align: center;
+  padding: 1rem;
+  margin-top: 2rem;
+  border-top: 1px solid var(--border);
+  font-size: 0.9rem;
+}
+
+/* Simple grid for product cards */
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 1rem;
+  padding: 1rem;
+}
+
+.product-card {
+  border: 1px solid #e0e0e0;
+  padding: 0.5rem;
+  border-radius: 4px;
+  text-align: center;
+}
+
+.product-card img {
+  max-width: 100%;
+  height: auto;
+}
+
+button.btn {
+  background: var(--primary);
+  color: #fff;
+  border: none;
+  padding: 0.5rem 1rem;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+button.btn.ghost {
+  background: transparent;
+  border: 1px solid var(--primary);
+  color: var(--primary);
+}
+
+button.chip {
+  background: #f0f0f0;
+  border: none;
+  margin: 0.2rem;
+  padding: 0.3rem 0.6rem;
+  border-radius: 12px;
+  cursor: pointer;
+}
+
+button.chip.on {
+  background: #007bff;
+  color: #fff;
+}
+
+section.hero {
+  text-align: center;
+  padding: 2rem 1rem;
+  background: #f9f9f9;
+}
+
+section.wrap {
+  padding: 1rem;
+}
+
+section.wrap.two {
+  display: flex;
+  justify-content: center;
+  gap: 2rem;
+}
+
+section.wrap.two .cat {
+  font-size: 1.2rem;
+  padding: 0.5rem 1rem;
+  border: 1px solid #007bff;
+  border-radius: 4px;
+}
+
+section.wrap.two .cat.dark {
+  background: #222;
+  color: #fff;
+}

@@ -1,0 +1,17 @@
+# Environment Variables — never commit these
+.env
+.env.local
+.env.*.local
+
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+dist-ssr/
+
+# Vite cache
+.vite/
+
+# Logs
+*.log

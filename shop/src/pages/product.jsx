@@ -277,7 +277,7 @@ export default function Product() {
               aria-label={isWish ? 'Remove from wishlist' : 'Save to wishlist'}
               title="Save to Wishlist"
             >
-              <svg width="22" height="22" viewBox="0 0 24 24" fill={isWish ? '#E11D48' : 'none'} stroke={isWish ? '#E11D48' : 'currentColor'} strokeWidth="2">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill={isWish ? '#000000' : 'none'} stroke={isWish ? '#000000' : 'currentColor'} strokeWidth="2">
                 <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />
               </svg>
             </button>

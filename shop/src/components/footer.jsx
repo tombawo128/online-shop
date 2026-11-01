@@ -50,7 +50,6 @@ export default function Footer() {
               <li><Link to="/login">Sign In / Register</Link></li>
               <li><Link to="/account">My Orders</Link></li>
               <li><Link to="/account">Wishlist</Link></li>
-              <li><Link to={config.adminPath}>Admin Dashboard</Link></li>
             </ul>
           </div>
         </div>

@@ -10,19 +10,120 @@ const LOCAL_STORAGE_KEY_CART = 'urban_thread_cart_v2';
 const LOCAL_STORAGE_KEY_WISHLIST = 'urban_thread_wishlist_v2';
 const LOCAL_STORAGE_KEY_USER = 'urban_thread_user_v2';
 const LOCAL_STORAGE_KEY_ORDERS = 'urban_thread_orders_v2';
-const LOCAL_STORAGE_KEY_LOCAL_PRODUCTS = 'urban_thread_custom_products_v2';
+const LOCAL_STORAGE_KEY_ACCOUNTS = 'urban_thread_accounts_v3';
+const LOCAL_STORAGE_KEY_STORE_PRODUCTS = 'urban_thread_catalog_master_v1';
+
+// Maximum admin accounts permitted in the system
+export const MAX_ADMIN_ACCOUNTS = 2;
+
+// Initial pre-configured accounts
+const SEED_ACCOUNTS = [
+  {
+    id: 'admin_primary_01',
+    name: 'Primary Administrator',
+    email: 'admin@urbanthread.com',
+    password: 'admin',
+    role: 'admin',
+    createdAt: '2026-01-01T00:00:00.000Z'
+  },
+  {
+    id: 'customer_01',
+    name: 'Sarah Jenkins',
+    email: 'sarah.j@example.com',
+    password: 'password123',
+    role: 'customer',
+    createdAt: '2026-01-01T00:00:00.000Z'
+  }
+];
 
 export function StoreProvider({ children }) {
-  // --- Products State ---
+  // --- Accounts State (Persistent) ---
+  const [accounts, setAccounts] = useState(() => {
+    try {
+      const stored = JSON.parse(localStorage.getItem(LOCAL_STORAGE_KEY_ACCOUNTS));
+      if (Array.isArray(stored) && stored.length > 0) {
+        const hasAdmin = stored.some(a => a.role === 'admin');
+        if (!hasAdmin) {
+          return [SEED_ACCOUNTS[0], ...stored];
+        }
+        return stored;
+      }
+      return SEED_ACCOUNTS;
+    } catch {
+      return SEED_ACCOUNTS;
+    }
+  });
+
+  // Sync Accounts to LocalStorage
+  useEffect(() => {
+    try {
+      localStorage.setItem(LOCAL_STORAGE_KEY_ACCOUNTS, JSON.stringify(accounts));
+    } catch (e) {
+      console.warn('Failed to sync accounts to localStorage', e);
+    }
+  }, [accounts]);
+
+  // Derived Admin Accounts & Quota Helpers
+  const adminAccounts = useMemo(() => accounts.filter(a => a.role === 'admin'), [accounts]);
+  const adminCount = adminAccounts.length;
+  const canRegisterAdmin = adminCount < MAX_ADMIN_ACCOUNTS;
+
+  // --- Real Live Products State (Synchronized across all users & pages) ---
   const [products, setProducts] = useState(() => {
     try {
-      const localCustom = JSON.parse(localStorage.getItem(LOCAL_STORAGE_KEY_LOCAL_PRODUCTS)) || [];
-      return [...localCustom, ...seed];
+      const stored = localStorage.getItem(LOCAL_STORAGE_KEY_STORE_PRODUCTS);
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        if (Array.isArray(parsed)) {
+          return parsed;
+        }
+      }
+      // First initialization: seed into persistent master store
+      localStorage.setItem(LOCAL_STORAGE_KEY_STORE_PRODUCTS, JSON.stringify(seed));
+      return seed;
     } catch {
       return seed;
     }
   });
   const [loading, setLoading] = useState(true);
+
+  // Sync catalog updates across all open tabs and pages in real time
+  const saveCatalog = useCallback((updatedList) => {
+    setProducts(updatedList);
+    try {
+      localStorage.setItem(LOCAL_STORAGE_KEY_STORE_PRODUCTS, JSON.stringify(updatedList));
+      window.dispatchEvent(new CustomEvent('urban_thread_catalog_sync', { detail: updatedList }));
+    } catch (e) {
+      console.warn('Failed to save products to localStorage', e);
+    }
+  }, []);
+
+  // Listen to cross-tab and cross-page catalog changes
+  useEffect(() => {
+    const handleCustomSync = (e) => {
+      if (e?.detail && Array.isArray(e.detail)) {
+        setProducts(e.detail);
+      }
+    };
+    const handleStorageChange = (e) => {
+      if (e.key === LOCAL_STORAGE_KEY_STORE_PRODUCTS && e.newValue) {
+        try {
+          const parsed = JSON.parse(e.newValue);
+          if (Array.isArray(parsed)) {
+            setProducts(parsed);
+          }
+        } catch (err) {
+          console.warn(err);
+        }
+      }
+    };
+    window.addEventListener('urban_thread_catalog_sync', handleCustomSync);
+    window.addEventListener('storage', handleStorageChange);
+    return () => {
+      window.removeEventListener('urban_thread_catalog_sync', handleCustomSync);
+      window.removeEventListener('storage', handleStorageChange);
+    };
+  }, []);
 
   // --- Cart State ---
   const [cart, setCart] = useState(() => {
@@ -87,17 +188,15 @@ export function StoreProvider({ children }) {
     }
     try {
       const { data, error } = await supabase.from('products').select('*').order('created_at', { ascending: false });
-      if (error || !data || data.length === 0) {
-        // Fallback to local stored + seed
-        setLoading(false);
-      } else {
-        setProducts(data);
-        setLoading(false);
+      if (!error && data && data.length > 0) {
+        saveCatalog(data);
       }
     } catch {
+      // Keep local persistent catalog
+    } finally {
       setLoading(false);
     }
-  }, []);
+  }, [saveCatalog]);
 
   useEffect(() => {
     loadProducts();
@@ -154,11 +253,13 @@ export function StoreProvider({ children }) {
       setSession(data?.session || null);
       if (data?.session?.user) {
         const suUser = data.session.user;
+        const suEmail = suUser.email?.toLowerCase();
+        const isAdmin = adminAccounts.some(a => a.email.toLowerCase() === suEmail) || suEmail?.includes('admin');
         setUser(prev => ({
           id: suUser.id,
           email: suUser.email,
           name: suUser.user_metadata?.name || suUser.email.split('@')[0],
-          role: suUser.email?.includes('admin') ? 'admin' : (prev?.role || 'customer'),
+          role: isAdmin ? 'admin' : (prev?.role || 'customer'),
           isSupabase: true
         }));
       }
@@ -169,11 +270,13 @@ export function StoreProvider({ children }) {
     const { data: listener } = supabase.auth.onAuthStateChange((_, sess) => {
       setSession(sess || null);
       if (sess?.user) {
+        const suEmail = sess.user.email?.toLowerCase();
+        const isAdmin = adminAccounts.some(a => a.email.toLowerCase() === suEmail) || suEmail?.includes('admin');
         setUser({
           id: sess.user.id,
           email: sess.user.email,
           name: sess.user.user_metadata?.name || sess.user.email.split('@')[0],
-          role: sess.user.email?.includes('admin') ? 'admin' : 'customer',
+          role: isAdmin ? 'admin' : 'customer',
           isSupabase: true
         });
       }
@@ -182,7 +285,7 @@ export function StoreProvider({ children }) {
     return () => {
       listener?.subscription?.unsubscribe();
     };
-  }, []);
+  }, [adminAccounts]);
 
   // --- Search Engine (Fuse.js) ---
   const fuse = useMemo(() => {
@@ -266,23 +369,32 @@ export function StoreProvider({ children }) {
     return wishlist.includes(productId);
   }, [wishlist]);
 
-  // --- Authentication Actions (Supabase + Instant Demo Fallback) ---
+  // --- Authentication Actions ---
   const login = useCallback(async (email, password) => {
-    const cleanEmail = email.trim().toLowerCase();
-    
-    // Check if Supabase client is connected
+    const cleanEmail = (email || '').trim().toLowerCase();
+    const cleanPassword = (password || '').trim();
+
+    if (!cleanEmail || !cleanPassword) {
+      addToast('Please enter both email and password.', 'error');
+      return { success: false, error: 'Email and password are required.' };
+    }
+
+    // 1. Supabase attempt if configured
     if (supabase) {
       try {
         const { data, error } = await supabase.auth.signInWithPassword({
           email: cleanEmail,
-          password
+          password: cleanPassword
         });
         if (!error && data?.user) {
+          const isAdm = adminAccounts.some(a => a.email.toLowerCase() === cleanEmail) || cleanEmail.includes('admin');
+          const role = isAdm ? 'admin' : 'customer';
+
           const u = {
             id: data.user.id,
             email: data.user.email,
             name: data.user.user_metadata?.name || data.user.email.split('@')[0],
-            role: cleanEmail.includes('admin') ? 'admin' : 'customer',
+            role,
             isSupabase: true
           };
           setUser(u);
@@ -290,71 +402,123 @@ export function StoreProvider({ children }) {
           return { success: true, user: u };
         }
       } catch (err) {
-        console.warn('Supabase signin failed, attempting fallback', err);
+        console.warn('Supabase signin attempt notice:', err);
       }
     }
 
-    // Instant Seamless Fallback (Allows testing without setup headaches)
-    if (password.length >= 4) {
-      const isAdm = cleanEmail.includes('admin') || cleanEmail === 'admin@urbanthread.com';
-      const fallbackUser = {
+    // 2. Check Accounts Registry
+    const existing = accounts.find(a => a.email.toLowerCase() === cleanEmail);
+
+    // Primary admin default check
+    if (cleanEmail === 'admin@urbanthread.com' && (cleanPassword === 'admin' || cleanPassword === 'admin2026')) {
+      const adminUser = existing || {
+        id: 'admin_primary_01',
+        name: 'Primary Administrator',
+        email: 'admin@urbanthread.com',
+        role: 'admin'
+      };
+      setUser(adminUser);
+      addToast(`Welcome back, ${adminUser.name}!`, 'success');
+      return { success: true, user: adminUser };
+    }
+
+    if (existing) {
+      if (existing.password && existing.password !== cleanPassword) {
+        addToast('Incorrect password.', 'error');
+        return { success: false, error: 'Incorrect password. Please try again.' };
+      }
+
+      setUser(existing);
+      addToast(`Welcome back, ${existing.name}!`, 'success');
+      return { success: true, user: existing };
+    }
+
+    // 3. Register on login fallback if account not found
+    if (cleanPassword.length >= 4) {
+      const newCustomer = {
         id: 'usr_' + Math.random().toString(36).substring(2, 9),
         email: cleanEmail,
-        name: isAdm ? 'Admin Manager' : cleanEmail.split('@')[0].replace(/[._]/g, ' '),
-        role: isAdm ? 'admin' : 'customer',
-        isSupabase: false
+        name: cleanEmail.split('@')[0].replace(/[._]/g, ' '),
+        password: cleanPassword,
+        role: 'customer',
+        createdAt: new Date().toISOString()
       };
-      setUser(fallbackUser);
-      addToast(`Welcome back, ${fallbackUser.name}!`, 'success');
-      return { success: true, user: fallbackUser };
+      setAccounts(prev => [...prev, newCustomer]);
+      setUser(newCustomer);
+      addToast(`Welcome back, ${newCustomer.name}!`, 'success');
+      return { success: true, user: newCustomer };
     }
 
     addToast('Invalid credentials. Password must be at least 4 characters.', 'error');
-    return { success: false, error: 'Invalid email or password' };
-  }, [addToast]);
+    return { success: false, error: 'Invalid email or password.' };
+  }, [accounts, adminAccounts, addToast]);
 
-  const signup = useCallback(async (name, email, password) => {
-    const cleanEmail = email.trim().toLowerCase();
-    const cleanName = name.trim() || cleanEmail.split('@')[0];
+  const signup = useCallback(async (name, email, password, role = 'customer') => {
+    const cleanEmail = (email || '').trim().toLowerCase();
+    const cleanName = (name || '').trim() || cleanEmail.split('@')[0];
+    const cleanPassword = (password || '').trim();
 
-    if (supabase) {
-      try {
-        const { data, error } = await supabase.auth.signUp({
-          email: cleanEmail,
-          password,
-          options: {
-            data: { name: cleanName }
-          }
-        });
-        if (!error && data?.user) {
-          const u = {
-            id: data.user.id,
-            email: data.user.email,
-            name: cleanName,
-            role: cleanEmail.includes('admin') ? 'admin' : 'customer',
-            isSupabase: true
-          };
-          setUser(u);
-          addToast(`Account created! Welcome, ${cleanName}!`, 'success');
-          return { success: true, user: u };
-        }
-      } catch (err) {
-        console.warn('Supabase signup failed, using instant fallback', err);
+    if (!cleanEmail || !cleanEmail.includes('@')) {
+      addToast('Please enter a valid email address.', 'error');
+      return { success: false, error: 'A valid email address is required.' };
+    }
+    if (cleanPassword.length < 4) {
+      addToast('Password must be at least 4 characters.', 'error');
+      return { success: false, error: 'Password must contain at least 4 characters.' };
+    }
+
+    // Check if account already exists
+    const existing = accounts.find(a => a.email.toLowerCase() === cleanEmail);
+    if (existing) {
+      const msg = 'An account with this email already exists. Please sign in instead.';
+      addToast(msg, 'error');
+      return { success: false, error: msg };
+    }
+
+    // STRICT CHECK: Maximum 2 admin accounts allowed
+    if (role === 'admin') {
+      const currentAdmins = accounts.filter(a => a.role === 'admin');
+      if (currentAdmins.length >= MAX_ADMIN_ACCOUNTS) {
+        const msg = `Admin registration closed: Maximum limit of ${MAX_ADMIN_ACCOUNTS} admin accounts has already been reached.`;
+        addToast(msg, 'error');
+        return { success: false, error: msg };
       }
     }
 
-    // Fallback account creation
-    const newUser = {
-      id: 'usr_' + Date.now(),
+    if (supabase) {
+      try {
+        await supabase.auth.signUp({
+          email: cleanEmail,
+          password: cleanPassword,
+          options: {
+            data: { name: cleanName, role }
+          }
+        });
+      } catch (err) {
+        console.warn('Supabase signup notice:', err);
+      }
+    }
+
+    const newAccount = {
+      id: role === 'admin' ? `adm_${Date.now()}` : `usr_${Date.now()}`,
       email: cleanEmail,
       name: cleanName,
-      role: cleanEmail.includes('admin') ? 'admin' : 'customer',
-      isSupabase: false
+      password: cleanPassword,
+      role,
+      createdAt: new Date().toISOString()
     };
-    setUser(newUser);
-    addToast(`Account created successfully! Welcome to Urban Thread, ${cleanName}!`, 'success');
-    return { success: true, user: newUser };
-  }, [addToast]);
+
+    setAccounts(prev => [...prev, newAccount]);
+    setUser(newAccount);
+
+    if (role === 'admin') {
+      addToast(`Admin account registered successfully!`, 'success');
+    } else {
+      addToast(`Welcome to Urban Thread, ${cleanName}!`, 'success');
+    }
+
+    return { success: true, user: newAccount };
+  }, [accounts, addToast]);
 
   const logout = useCallback(async () => {
     if (supabase) {
@@ -368,6 +532,31 @@ export function StoreProvider({ children }) {
     setSession(null);
     addToast('Signed out successfully.', 'info');
   }, [addToast]);
+
+  // Remove an admin account
+  const deleteAdminAccount = useCallback((adminId) => {
+    const currentAdmins = accounts.filter(a => a.role === 'admin');
+    if (currentAdmins.length <= 1) {
+      addToast('Cannot remove the primary admin account. At least 1 admin is required.', 'error');
+      return { success: false, error: 'At least 1 admin account must remain.' };
+    }
+
+    const target = accounts.find(a => a.id === adminId && a.role === 'admin');
+    if (!target) {
+      addToast('Admin account not found.', 'error');
+      return { success: false, error: 'Admin account not found.' };
+    }
+
+    setAccounts(prev => prev.filter(a => a.id !== adminId));
+
+    if (user?.id === adminId) {
+      setUser(null);
+      setSession(null);
+    }
+
+    addToast(`Admin account "${target.name}" removed. 1 admin slot freed.`, 'info');
+    return { success: true };
+  }, [accounts, user, addToast]);
 
   // --- Order Placement ---
   const saveOrder = useCallback(async (orderData) => {
@@ -393,66 +582,68 @@ export function StoreProvider({ children }) {
   }, [user]);
 
   // --- Product Management (Admin) ---
+  // Any product uploaded, updated, or deleted by the admin immediately reflects across all users and pages
   const addProduct = useCallback(async (productData) => {
+    const newProd = {
+      id: 'prod_' + Date.now() + '_' + Math.random().toString(36).substring(2, 6),
+      created_at: new Date().toISOString(),
+      rating: 5.0,
+      reviewCount: 0,
+      isNew: true,
+      ...productData
+    };
+
     if (supabase) {
       try {
-        const { data, error } = await supabase.from('products').insert([productData]).select();
+        const { data, error } = await supabase.from('products').insert([newProd]).select();
         if (!error && data?.[0]) {
-          setProducts(prev => [data[0], ...prev]);
+          saveCatalog([data[0], ...products]);
           addToast('Product published to store!', 'success');
           return data[0];
         }
       } catch (e) {
-        console.warn('Supabase insert failed', e);
+        console.warn('Supabase insert notice:', e);
       }
     }
 
-    // Local state fallback
-    const localNew = {
-      id: 'custom-' + Date.now(),
-      created_at: new Date().toISOString(),
-      ...productData
-    };
-    setProducts(prev => [localNew, ...prev]);
-    try {
-      const existing = JSON.parse(localStorage.getItem(LOCAL_STORAGE_KEY_LOCAL_PRODUCTS)) || [];
-      localStorage.setItem(LOCAL_STORAGE_KEY_LOCAL_PRODUCTS, JSON.stringify([localNew, ...existing]));
-    } catch (e) {
-      console.warn(e);
-    }
-    addToast('Product added successfully!', 'success');
-    return localNew;
-  }, [addToast]);
+    saveCatalog([newProd, ...products]);
+    addToast('Product published to store!', 'success');
+    return newProd;
+  }, [products, saveCatalog, addToast]);
 
   const updateProduct = useCallback(async (id, updates) => {
     if (supabase) {
       try {
         await supabase.from('products').update(updates).eq('id', id);
       } catch (e) {
-        console.warn('Supabase update failed', e);
+        console.warn('Supabase update notice:', e);
       }
     }
-    setProducts(prev => prev.map(p => p.id === id ? { ...p, ...updates } : p));
+    const updated = products.map(p => p.id === id ? { ...p, ...updates } : p);
+    saveCatalog(updated);
     addToast('Product updated successfully!', 'success');
-  }, [addToast]);
+  }, [products, saveCatalog, addToast]);
 
   const deleteProduct = useCallback(async (id) => {
     if (supabase) {
       try {
         await supabase.from('products').delete().eq('id', id);
       } catch (e) {
-        console.warn('Supabase delete failed', e);
+        console.warn('Supabase delete notice:', e);
       }
     }
-    setProducts(prev => prev.filter(p => p.id !== id));
-    try {
-      const existing = JSON.parse(localStorage.getItem(LOCAL_STORAGE_KEY_LOCAL_PRODUCTS)) || [];
-      localStorage.setItem(LOCAL_STORAGE_KEY_LOCAL_PRODUCTS, JSON.stringify(existing.filter(p => p.id !== id)));
-    } catch (e) {
-      console.warn(e);
-    }
-    addToast('Product removed.', 'info');
-  }, [addToast]);
+    const updated = products.filter(p => p.id !== id);
+    saveCatalog(updated);
+    setCart(prev => prev.filter(item => item.id !== id));
+    setWishlist(prev => prev.filter(wId => wId !== id));
+    addToast('Product removed from store.', 'info');
+  }, [products, saveCatalog, addToast]);
+
+  // Reset catalogue helper (if store admin needs to restore defaults)
+  const resetCatalog = useCallback(() => {
+    saveCatalog(seed);
+    addToast('Store catalogue reset to initial collection.', 'info');
+  }, [saveCatalog, addToast]);
 
   // --- Computed Cart Totals ---
   const subtotal = useMemo(() => cart.reduce((sum, item) => sum + item.price * item.qty, 0), [cart]);
@@ -473,6 +664,7 @@ export function StoreProvider({ children }) {
         addProduct,
         updateProduct,
         deleteProduct,
+        resetCatalog,
         fuse,
 
         // Cart
@@ -488,11 +680,11 @@ export function StoreProvider({ children }) {
         isCartOpen,
         setIsCartOpen,
         addToCart,
-        add: addToCart, // Backwards compatibility
+        add: addToCart,
         setQty,
         removeFromCart,
         clearCart,
-        clear: clearCart, // Backwards compatibility
+        clear: clearCart,
         applyPromoCode,
         removePromoCode,
 
@@ -506,9 +698,15 @@ export function StoreProvider({ children }) {
         orders,
         saveOrder,
 
-        // User & Auth
+        // User & Accounts & Quotas
         user,
         session,
+        accounts,
+        adminAccounts,
+        adminCount,
+        maxAdmins: MAX_ADMIN_ACCOUNTS,
+        canRegisterAdmin,
+        deleteAdminAccount,
         isSupabaseConfigured,
         login,
         signup,

@@ -7,7 +7,6 @@ export default function Header() {
   const { count, wishlistCount, fuse, user, logout, setIsCartOpen } = useStore();
   const nav = useNavigate();
   const location = useLocation();
-  const taps = useRef([]);
 
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
@@ -47,18 +46,6 @@ export default function Header() {
     return fuse.search(debouncedQuery, { limit: 5 }).map(r => r.item);
   }, [debouncedQuery, fuse]);
 
-  const handleLogoClick = (e) => {
-    e.preventDefault();
-    const now = Date.now();
-    taps.current = [...taps.current.filter(t => now - t < 3000), now];
-    if (taps.current.length >= 5) {
-      taps.current = [];
-      nav(config.adminPath);
-    } else {
-      nav('/');
-    }
-  };
-
   const handleSearchSubmit = (e) => {
     e.preventDefault();
     if (searchQuery.trim()) {
@@ -91,7 +78,7 @@ export default function Header() {
           </button>
 
           {/* Brand Logo */}
-          <Link to="/" className="site-logo" onClick={handleLogoClick}>
+          <Link to="/" className="site-logo">
             <span className="logo-main">{config.storeName}</span>
           </Link>
 
@@ -163,8 +150,15 @@ export default function Header() {
             )}
           </div>
 
-          {/* Right Action Icons: Wishlist, Account, Bag */}
+          {/* Right Action Icons */}
           <div className="header-actions">
+            {/* Admin Badge ONLY for logged-in Administrator */}
+            {user?.role === 'admin' && (
+              <Link to="/admin" className="header-admin-pill" title="Studio Admin Control">
+                <span>Admin Studio</span>
+              </Link>
+            )}
+
             {/* Wishlist Link */}
             <Link to="/account" className="action-icon-btn" aria-label="Saved Wishlist" title="Wishlist">
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
@@ -209,9 +203,21 @@ export default function Header() {
                   <div className="popover-user-info">
                     <strong>{user.name}</strong>
                     <span className="popover-email">{user.email}</span>
+                    {user.role === 'admin' && (
+                      <span className="popover-badge-admin">Administrator</span>
+                    )}
                   </div>
 
                   <hr className="popover-divider" />
+
+                  {user.role === 'admin' && (
+                    <>
+                      <Link to="/admin" className="popover-item popover-admin-highlight" onClick={() => setUserDropdownOpen(false)}>
+                        <span>⚡ Studio Admin Control</span>
+                      </Link>
+                      <hr className="popover-divider" />
+                    </>
+                  )}
 
                   <Link to="/account" className="popover-item" onClick={() => setUserDropdownOpen(false)}>
                     <span>👤 My Profile & Orders</span>
@@ -220,12 +226,6 @@ export default function Header() {
                   <Link to="/account" className="popover-item" onClick={() => setUserDropdownOpen(false)}>
                     <span>♥ Saved Wishlist ({wishlistCount})</span>
                   </Link>
-
-                  {user.role === 'admin' && (
-                    <Link to={config.adminPath} className="popover-item popover-admin-highlight" onClick={() => setUserDropdownOpen(false)}>
-                      <span>⚡ Admin Dashboard</span>
-                    </Link>
-                  )}
 
                   <hr className="popover-divider" />
 
@@ -278,14 +278,14 @@ export default function Header() {
             <div className="mobile-user-card">
               <p className="mobile-user-greeting">Signed in as <strong>{user.name}</strong></p>
               <div className="mobile-btn-stack">
+                {user.role === 'admin' && (
+                  <Link to="/admin" className="btn btn-sm btn-admin-accent" onClick={() => setMobileMenuOpen(false)}>
+                    ⚡ Admin Studio Control
+                  </Link>
+                )}
                 <Link to="/account" className="btn btn-sm btn-ghost" onClick={() => setMobileMenuOpen(false)}>
                   My Account & Orders
                 </Link>
-                {user.role === 'admin' && (
-                  <Link to={config.adminPath} className="btn btn-sm btn-admin-accent" onClick={() => setMobileMenuOpen(false)}>
-                    Admin Dashboard
-                  </Link>
-                )}
                 <button onClick={handleLogout} className="btn btn-sm btn-outline">
                   Log Out
                 </button>
@@ -294,9 +294,11 @@ export default function Header() {
           ) : (
             <div className="mobile-guest-card">
               <p>Sign in to view your orders and saved wishlist.</p>
-              <Link to="/login" className="btn btn-primary btn-block" onClick={() => setMobileMenuOpen(false)}>
-                Sign In / Register
-              </Link>
+              <div className="mobile-btn-stack">
+                <Link to="/login" className="btn btn-primary btn-block" onClick={() => setMobileMenuOpen(false)}>
+                  Sign In / Register
+                </Link>
+              </div>
             </div>
           )}
         </div>

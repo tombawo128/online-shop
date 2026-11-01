@@ -23,8 +23,7 @@ const parseCommaList = (str) => {
   return (str || '').split(',').map(x => x.trim()).filter(Boolean);
 };
 
-// Process an uploaded file: uploads to Supabase storage if available,
-// or creates an optimized base64 Data URL so images display immediately anywhere.
+
 async function processImageFile(file) {
   // If Supabase is connected, attempt direct bucket upload
   if (supabase) {
@@ -86,10 +85,25 @@ async function processImageFile(file) {
 }
 
 export default function Admin() {
-  const { user, logout, products, orders, addProduct, updateProduct, deleteProduct, addToast } = useStore();
+  const {
+    user,
+    logout,
+    products,
+    orders,
+    addProduct,
+    updateProduct,
+    deleteProduct,
+    addToast,
+    adminAccounts,
+    adminCount,
+    maxAdmins,
+    canRegisterAdmin,
+    deleteAdminAccount,
+    signup
+  } = useStore();
   const nav = useNavigate();
 
-  const [activeTab, setActiveTab] = useState('products'); // 'products', 'orders'
+  const [activeTab, setActiveTab] = useState('products'); // 'products', 'orders', 'admins'
   const [session, setSession] = useState(undefined);
 
   // Set page title & robots tag
@@ -124,18 +138,23 @@ export default function Admin() {
     }
   }, [user]);
 
-  // If loading session
-  if (session === undefined) {
+  // Route guard: Ordinary users cannot view or access the admin page
+  useEffect(() => {
+    if (session !== undefined) {
+      const isAdmin = user?.role === 'admin' || session?.user?.email?.includes('admin');
+      if (!isAdmin) {
+        nav('/login?redirect=/admin', { replace: true });
+      }
+    }
+  }, [session, user, nav]);
+
+  // If loading session or unauthorized, do not render admin panel
+  if (session === undefined || !user || user.role !== 'admin') {
     return (
       <main className="admin-loading-screen">
-        <p>Loading Admin Workspace…</p>
+        <p>Verifying administrative credentials…</p>
       </main>
     );
-  }
-
-  // If not authenticated as admin, show elegant Admin Login
-  if (!session || (user && user.role !== 'admin' && !session.user?.email?.includes('admin'))) {
-    return <AdminLogin onLoginSuccess={(u) => setSession(u)} />;
   }
 
   const handleAdminLogout = async () => {
@@ -153,7 +172,10 @@ export default function Admin() {
             {config.storeName} <span>STUDIO CONTROL</span>
           </Link>
           <span className="admin-env-badge">
-            {isSupabaseConfigured ? '🟢 Supabase Cloud' : '🟡 Standalone Mode'}
+            {isSupabaseConfigured ? 'Supabase Cloud' : 'Master Live Catalog'}
+          </span>
+          <span className="admin-slot-header-pill">
+            Admin Accounts: {adminCount}/{maxAdmins}
           </span>
         </div>
 
@@ -162,7 +184,7 @@ export default function Admin() {
             ← View Live Store
           </Link>
           <button onClick={handleAdminLogout} className="btn btn-sm btn-outline">
-            Sign Out
+            Sign Out ({user?.name?.split(' ')[0] || 'Admin'})
           </button>
         </div>
       </header>
@@ -193,11 +215,11 @@ export default function Admin() {
           </div>
 
           <div className="metric-card">
-            <span className="metric-label">Avg. Order Value</span>
-            <strong className="metric-val">
-              {money(orders.length ? (orders.reduce((s, o) => s + (Number(o.total) || 0), 0) / orders.length) : 0)}
-            </strong>
-            <span className="metric-hint">Per customer basket</span>
+            <span className="metric-label">Admin Accounts Quota</span>
+            <strong className="metric-val">{adminCount} / {maxAdmins}</strong>
+            <span className="metric-hint">
+              {canRegisterAdmin ? '1 slot available to register' : 'All 2 admin slots filled'}
+            </span>
           </div>
         </section>
 
@@ -207,17 +229,23 @@ export default function Admin() {
             className={`admin-tab-pill ${activeTab === 'products' ? 'active' : ''}`}
             onClick={() => setActiveTab('products')}
           >
-            👕 Products & Catalogue ({products.length})
+            Products & Catalog ({products.length})
           </button>
           <button
             className={`admin-tab-pill ${activeTab === 'orders' ? 'active' : ''}`}
             onClick={() => setActiveTab('orders')}
           >
-            📦 Customer Orders ({orders.length})
+            Customer Orders ({orders.length})
+          </button>
+          <button
+            className={`admin-tab-pill ${activeTab === 'admins' ? 'active' : ''}`}
+            onClick={() => setActiveTab('admins')}
+          >
+            Admin Accounts ({adminCount}/{maxAdmins})
           </button>
         </div>
 
-        {activeTab === 'products' ? (
+        {activeTab === 'products' && (
           <AdminProductsSection
             products={products}
             addProduct={addProduct}
@@ -225,8 +253,22 @@ export default function Admin() {
             deleteProduct={deleteProduct}
             addToast={addToast}
           />
-        ) : (
+        )}
+
+        {activeTab === 'orders' && (
           <AdminOrdersSection orders={orders} />
+        )}
+
+        {activeTab === 'admins' && (
+          <AdminTeamSection
+            adminAccounts={adminAccounts}
+            adminCount={adminCount}
+            maxAdmins={maxAdmins}
+            canRegisterAdmin={canRegisterAdmin}
+            deleteAdminAccount={deleteAdminAccount}
+            signup={signup}
+            currentUser={user}
+          />
         )}
       </div>
     </main>
@@ -234,78 +276,211 @@ export default function Admin() {
 }
 
 // -------------------------------------------------------------
-// Admin Login Sub-component
+// Admin Team & Security Quota Management Section
 // -------------------------------------------------------------
-function AdminLogin({ onLoginSuccess }) {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [errorMsg, setErrorMsg] = useState('');
+function AdminTeamSection({
+  adminAccounts,
+  adminCount,
+  maxAdmins,
+  canRegisterAdmin,
+  deleteAdminAccount,
+  signup,
+  currentUser
+}) {
+  const [showAddForm, setShowAddForm] = useState(false);
+  const [newAdminName, setNewAdminName] = useState('');
+  const [newAdminEmail, setNewAdminEmail] = useState('');
+  const [newAdminPassword, setNewAdminPassword] = useState('');
+  const [formError, setFormError] = useState('');
   const [busy, setBusy] = useState(false);
-  const { login } = useStore();
 
-  const handleAdminSignIn = async (e) => {
+  const handleRegisterSecondAdmin = async (e) => {
     e.preventDefault();
-    setErrorMsg('');
-    setBusy(true);
+    setFormError('');
 
-    try {
-      const res = await login(email, password);
-      if (res.success) {
-        onLoginSuccess(res.user);
-      } else {
-        setErrorMsg('Invalid credentials. Please check your email and password.');
-      }
-    } catch (err) {
-      setErrorMsg(err.message || 'Authentication error. Please try again.');
-    } finally {
-      setBusy(false);
+    if (!canRegisterAdmin) {
+      setFormError(`Maximum limit of ${maxAdmins} admin accounts already reached.`);
+      return;
+    }
+    if (!newAdminName.trim() || !newAdminEmail.trim() || !newAdminPassword.trim()) {
+      setFormError('Please fill in all administrator fields.');
+      return;
+    }
+
+    setBusy(true);
+    const res = await signup(newAdminName, newAdminEmail, newAdminPassword, 'admin');
+    setBusy(false);
+
+    if (res.success) {
+      setShowAddForm(false);
+      setNewAdminName('');
+      setNewAdminEmail('');
+      setNewAdminPassword('');
+    } else {
+      setFormError(res.error || 'Failed to create admin account.');
     }
   };
 
   return (
-    <main className="admin-login-screen">
-      <div className="admin-login-box">
-        <div className="admin-login-header">
-          <span className="admin-security-tag">🔐 RESTRICTED PORTAL</span>
-          <h1>Admin Access</h1>
-          <p>Enter your authorized credentials to manage products and orders.</p>
+    <section className="admin-team-section">
+      <div className="section-toolbar-row">
+        <div>
+          <h2>Administrator Accounts ({adminCount} of {maxAdmins})</h2>
+          <p className="section-desc">
+            For security, exactly <strong>{maxAdmins} administrator accounts</strong> can be registered.
+          </p>
         </div>
 
-        {errorMsg && <div className="admin-alert-error">{errorMsg}</div>}
-
-        <form onSubmit={handleAdminSignIn} className="admin-form">
-          <div className="form-group">
-            <label>Admin Email</label>
-            <input
-              type="email"
-              value={email}
-              onChange={e => setEmail(e.target.value)}
-              placeholder="admin@example.com"
-              required
-            />
-          </div>
-
-          <div className="form-group">
-            <label>Password</label>
-            <input
-              type="password"
-              value={password}
-              onChange={e => setPassword(e.target.value)}
-              placeholder="••••••••"
-              required
-            />
-          </div>
-
-          <button type="submit" className="btn btn-primary btn-block" disabled={busy}>
-            {busy ? 'Authenticating…' : 'Enter Admin Panel'}
+        {canRegisterAdmin && (
+          <button
+            className="btn btn-primary"
+            onClick={() => setShowAddForm(!showAddForm)}
+          >
+            {showAddForm ? '✕ Close Form' : '+ Register 2nd Admin Account'}
           </button>
-        </form>
+        )}
+      </div>
 
-        <div className="admin-back-link">
-          <Link to="/">← Return to Public Store</Link>
+      {/* Quota Banner */}
+      <div className={`admin-quota-banner ${canRegisterAdmin ? 'banner-slots-open' : 'banner-slots-full'}`}>
+        <div className="quota-banner-body">
+          <strong>
+            {canRegisterAdmin
+              ? `1 of ${maxAdmins} Admin Accounts Available`
+              : `All ${maxAdmins} Admin Accounts Configured (Maximum Limit)`}
+          </strong>
+          <p>
+            {canRegisterAdmin
+              ? `You can register 1 more administrator account. Once 2 admin accounts are registered, the registration option is automatically removed.`
+              : `The maximum limit of 2 admin accounts is active. To add a different admin, you must first remove one below.`}
+          </p>
         </div>
       </div>
-    </main>
+
+      {/* Register 2nd Admin Form */}
+      {showAddForm && canRegisterAdmin && (
+        <div className="admin-product-form-box">
+          <div className="form-head">
+            <h3>Register 2nd Administrator Account</h3>
+            <button type="button" className="btn btn-sm btn-ghost" onClick={() => setShowAddForm(false)}>
+              ✕ Cancel
+            </button>
+          </div>
+
+          {formError && <div className="admin-alert-error">{formError}</div>}
+
+          <form onSubmit={handleRegisterSecondAdmin} className="admin-grid-form">
+            <div className="form-group">
+              <label>Admin Full Name</label>
+              <input
+                type="text"
+                placeholder="e.g. Marcus Reid"
+                value={newAdminName}
+                onChange={e => setNewAdminName(e.target.value)}
+                required
+              />
+            </div>
+
+            <div className="form-group">
+              <label>Admin Email Address</label>
+              <input
+                type="email"
+                placeholder="admin2@urbanthread.com"
+                value={newAdminEmail}
+                onChange={e => setNewAdminEmail(e.target.value)}
+                required
+              />
+            </div>
+
+            <div className="form-group">
+              <label>Password</label>
+              <input
+                type="password"
+                placeholder="••••••••"
+                value={newAdminPassword}
+                onChange={e => setNewAdminPassword(e.target.value)}
+                required
+              />
+            </div>
+
+            <div className="full-span form-actions">
+              <button type="submit" className="btn btn-primary" disabled={busy}>
+                {busy ? 'Registering…' : `Confirm & Register Admin (Slot 2 of ${maxAdmins})`}
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
+
+      {/* Admin Accounts List */}
+      <div className="admin-cards-grid">
+        {adminAccounts.map((adm, idx) => (
+          <div key={adm.id} className="admin-account-card">
+            <div className="admin-card-header">
+              <div className="admin-card-avatar">
+                {(adm.name || adm.email || 'A').slice(0, 2).toUpperCase()}
+              </div>
+              <div className="admin-card-title">
+                <strong>{adm.name}</strong>
+                <span className="admin-card-slot">
+                  Slot {idx + 1} of {maxAdmins} {idx === 0 ? '(Primary Admin)' : '(Co-Admin)'}
+                </span>
+              </div>
+            </div>
+
+            <div className="admin-card-details">
+              <div className="detail-line">
+                <span className="detail-key">Email:</span>
+                <span className="detail-val">{adm.email}</span>
+              </div>
+              <div className="detail-line">
+                <span className="detail-key">Role:</span>
+                <span className="detail-val role-badge-admin">Store Administrator</span>
+              </div>
+              {adm.createdAt && (
+                <div className="detail-line">
+                  <span className="detail-key">Created:</span>
+                  <span className="detail-val">{new Date(adm.createdAt).toLocaleDateString()}</span>
+                </div>
+              )}
+            </div>
+
+            <div className="admin-card-actions">
+              {idx === 0 ? (
+                <span className="primary-lock-note">🔒 Primary account protected</span>
+              ) : (
+                <button
+                  type="button"
+                  className="btn btn-sm btn-outline btn-danger"
+                  onClick={() => {
+                    if (window.confirm(`Are you sure you want to remove admin account "${adm.name}"? This will free up slot 2 of 2.`)) {
+                      deleteAdminAccount(adm.id);
+                    }
+                  }}
+                >
+                  🗑 Remove Admin (Free Slot 2)
+                </button>
+              )}
+            </div>
+          </div>
+        ))}
+
+        {/* Empty Slot Card if only 1 admin exists */}
+        {canRegisterAdmin && (
+          <div className="admin-account-card admin-empty-slot-card">
+            <h4>Slot 2 of {maxAdmins} Available</h4>
+            <p>You can add 1 more administrator to help manage your store.</p>
+            <button
+              type="button"
+              className="btn btn-outline btn-sm"
+              onClick={() => setShowAddForm(true)}
+            >
+              + Register 2nd Admin
+            </button>
+          </div>
+        )}
+      </div>
+    </section>
   );
 }
 
@@ -839,7 +1014,7 @@ function AdminProductsSection({ products, addProduct, updateProduct, deleteProdu
                 </td>
                 <td>
                   <span className="photo-count-pill">
-                    📸 {Array.isArray(p.images) ? p.images.length : (p.images ? 1 : 0)}
+                    {Array.isArray(p.images) ? p.images.length : (p.images ? 1 : 0)} photos
                   </span>
                 </td>
                 <td className="sizes-cell">
@@ -970,16 +1145,16 @@ function AdminOrdersSection({ orders }) {
                     onClick={() => handleDeleteOrder(order.id)}
                     title="Delete order record"
                   >
-                    🗑
+                    Delete
                   </button>
                 </div>
               </div>
 
               <div className="order-contact-details">
-                <span>📞 Phone: <strong>{order.phone}</strong></span>
-                <span>📍 State: <strong>{order.state}</strong></span>
-                <span>🏠 Address: <strong>{order.location}</strong></span>
-                {order.customer_email && <span>✉️ Email: <strong>{order.customer_email}</strong></span>}
+                <span>Phone: <strong>{order.phone}</strong></span>
+                <span>State: <strong>{order.state}</strong></span>
+                <span>Address: <strong>{order.location}</strong></span>
+                {order.customer_email && <span>Email: <strong>{order.customer_email}</strong></span>}
               </div>
 
               <div className="order-items-summary">
@@ -1004,7 +1179,7 @@ function AdminOrdersSection({ orders }) {
                     rel="noreferrer"
                     className="btn-wa-direct"
                   >
-                    💬 Message Customer on WhatsApp
+                    Message on WhatsApp
                   </a>
                 </div>
               </div>

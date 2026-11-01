@@ -28,7 +28,9 @@ function ScrollToTop() {
 
 export default function App() {
   const location = useLocation();
-  const isAdmin = location.pathname.startsWith(config.adminPath);
+  const isAdmin = location.pathname.startsWith('/admin') ||
+                  location.pathname.startsWith(config.adminPath) ||
+                  location.pathname.startsWith('/manage-change-this');
 
   return (
     <div className="site-wrapper">
@@ -54,7 +56,9 @@ export default function App() {
             <Route path="/signin" element={<AuthPage defaultMode="signin" />} />
             <Route path="/signup" element={<AuthPage defaultMode="signup" />} />
             <Route path="/account" element={<AccountPage />} />
+            <Route path="/admin" element={<Admin />} />
             <Route path={config.adminPath} element={<Admin />} />
+            <Route path="/manage-change-this" element={<Admin />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </Suspense>

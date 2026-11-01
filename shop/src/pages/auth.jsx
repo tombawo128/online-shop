@@ -6,12 +6,22 @@ import { config } from '../config.js';
 export default function AuthPage({ defaultMode = 'signin' }) {
   const [searchParams] = useSearchParams();
   const nav = useNavigate();
-  const { user, login, signup, addToast } = useStore();
+  const {
+    user,
+    login,
+    signup,
+    adminCount,
+    maxAdmins,
+    canRegisterAdmin
+  } = useStore();
 
-  const [mode, setMode] = useState(defaultMode); // 'signin' or 'signup'
+  const [mode, setMode] = useState(defaultMode); // 'signin' | 'signup' | 'admin-signup'
+
+  // Form Fields
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(true);
   const [busy, setBusy] = useState(false);
@@ -19,200 +29,178 @@ export default function AuthPage({ defaultMode = 'signin' }) {
 
   const redirectPath = searchParams.get('redirect') || '/account';
 
-  // If already logged in, redirect to destination or account
+  // If already logged in
   useEffect(() => {
     if (user) {
-      if (user.role === 'admin' && redirectPath === '/account') {
-        nav(config.adminPath);
+      if (user.role === 'admin') {
+        nav('/admin');
       } else {
         nav(redirectPath);
       }
     }
   }, [user, nav, redirectPath]);
 
+  // If admin creation is no longer available and user was on admin-signup, revert to signin
+  useEffect(() => {
+    if (!canRegisterAdmin && mode === 'admin-signup') {
+      setMode('signin');
+    }
+  }, [canRegisterAdmin, mode]);
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setFormError('');
 
-    if (!email.trim() || !email.includes('@')) {
-      setFormError('Please provide a valid email address.');
+    const cleanEmail = email.trim();
+    if (!cleanEmail || !cleanEmail.includes('@')) {
+      setFormError('Please enter a valid email address.');
       return;
     }
     if (password.length < 4) {
       setFormError('Password must contain at least 4 characters.');
       return;
     }
-    if (mode === 'signup' && !name.trim()) {
-      setFormError('Please enter your full name.');
-      return;
+
+    if (mode === 'signup' || mode === 'admin-signup') {
+      if (!name.trim()) {
+        setFormError('Please enter your full name.');
+        return;
+      }
+      if (mode === 'admin-signup') {
+        if (!canRegisterAdmin) {
+          setFormError(`Maximum limit of ${maxAdmins} admin accounts reached.`);
+          return;
+        }
+        if (confirmPassword && password !== confirmPassword) {
+          setFormError('Passwords do not match.');
+          return;
+        }
+      }
     }
 
     setBusy(true);
 
     try {
       if (mode === 'signin') {
-        const res = await login(email, password);
+        const res = await login(cleanEmail, password);
         if (!res.success) {
-          setFormError(res.error || 'Invalid credentials.');
+          setFormError(res.error || 'Invalid email or password.');
+        } else {
+          if (res.user?.role === 'admin') {
+            nav('/admin');
+          } else {
+            nav(redirectPath);
+          }
+        }
+      } else if (mode === 'admin-signup') {
+        const res = await signup(name, cleanEmail, password, 'admin');
+        if (!res.success) {
+          setFormError(res.error || 'Admin registration failed.');
+        } else {
+          nav('/admin');
         }
       } else {
-        const res = await signup(name, email, password);
+        const res = await signup(name, cleanEmail, password, 'customer');
         if (!res.success) {
           setFormError(res.error || 'Registration failed.');
+        } else {
+          nav(redirectPath);
         }
       }
     } catch (err) {
-      setFormError(err.message || 'An unexpected error occurred. Please try again.');
+      setFormError(err.message || 'An unexpected error occurred.');
     } finally {
       setBusy(false);
     }
   };
 
-  const fillDemoCustomer = () => {
-    setEmail('emma.watson@example.com');
-    setPassword('secret123');
-    setName('Emma Watson');
-    setMode('signin');
-  };
-
-  const fillDemoAdmin = () => {
-    setEmail('admin@urbanthread.com');
-    setPassword('admin2026');
-    setName('Store Manager');
-    setMode('signin');
-  };
-
-  const handleQuickDemoLogin = async (role) => {
-    setBusy(true);
-    setFormError('');
-    if (role === 'admin') {
-      await login('admin@urbanthread.com', 'admin2026');
-      nav(config.adminPath);
-    } else {
-      await login('customer@urbanthread.com', 'demo1234');
-      nav(redirectPath);
-    }
-    setBusy(false);
-  };
-
   return (
     <main className="auth-page-container">
       <div className="auth-split-wrapper">
-        {/* Left Side: Visual Showcase */}
+        {/* Left Editorial Visual Showcase - Monochrome Minimalist */}
         <div className="auth-visual-column">
           <div className="auth-visual-overlay" />
           <img
             src="https://images.unsplash.com/photo-1490481651871-ab68de25d43d?auto=format&fit=crop&w=1200&q=80"
-            alt="Fashion editorial showcase"
+            alt="Collection Showcase"
             className="auth-visual-bg"
           />
+
           <div className="auth-visual-content">
-            <span className="auth-visual-tag">WELCOME TO URBAN THREAD</span>
-            <h2>Quality Clothes for Women & Men</h2>
-            <p>
-              Create an account or sign in to track your orders, save your wishlist, and enjoy 15% off your first purchase.
-            </p>
-            <div className="auth-perks">
-              <div className="auth-perk-item">
-                <span className="perk-check">✓</span>
-                <span>Fast delivery on all orders</span>
-              </div>
-              <div className="auth-perk-item">
-                <span className="perk-check">✓</span>
-                <span>Save your favorite items to wishlist</span>
-              </div>
-              <div className="auth-perk-item">
-                <span className="perk-check">✓</span>
-                <span>Quick checkout with saved delivery address</span>
-              </div>
-            </div>
+            <span className="auth-visual-tag">{config.storeName.toUpperCase()}</span>
+            <h2>Timeless Essentials for Modern Living</h2>
           </div>
         </div>
 
-        {/* Right Side: Interactive Form */}
+        {/* Right Form Column - Clean, Professional & Monochrome */}
         <div className="auth-form-column">
           <div className="auth-form-card">
-            <div className="auth-header">
+            <div className="auth-top-bar">
               <Link to="/" className="auth-brand-logo">
                 {config.storeName}
               </Link>
+            </div>
+
+            {/* Heading */}
+            <div className="auth-header">
               <h1 className="auth-heading">
-                {mode === 'signin' ? 'Welcome back' : 'Create your account'}
+                {mode === 'admin-signup'
+                  ? 'Register Administrator'
+                  : mode === 'signin'
+                  ? 'Sign In'
+                  : 'Create Account'}
               </h1>
-              <p className="auth-subheading">
-                {mode === 'signin'
-                  ? 'Sign in to access your orders, wishlist, and profile.'
-                  : 'Register now to receive a 15% discount on your first wardrobe purchase.'}
-              </p>
             </div>
 
-            {/* Mode Switcher Tabs */}
-            <div className="auth-tabs" role="tablist">
-              <button
-                type="button"
-                role="tab"
-                aria-selected={mode === 'signin'}
-                className={`auth-tab-btn ${mode === 'signin' ? 'active' : ''}`}
-                onClick={() => {
-                  setMode('signin');
-                  setFormError('');
-                }}
-              >
-                Sign In
-              </button>
-              <button
-                type="button"
-                role="tab"
-                aria-selected={mode === 'signup'}
-                className={`auth-tab-btn ${mode === 'signup' ? 'active' : ''}`}
-                onClick={() => {
-                  setMode('signup');
-                  setFormError('');
-                }}
-              >
-                Create Account
-              </button>
-            </div>
-
-            {/* Quick Demo Login Helpers */}
-            <div className="demo-login-box">
-              <div className="demo-badge-label">⚡ Fast Demo Access:</div>
-              <div className="demo-actions">
+            {/* Customer Tabs */}
+            {mode !== 'admin-signup' && (
+              <div className="auth-tabs" role="tablist">
                 <button
                   type="button"
-                  className="btn-demo-pill"
-                  onClick={() => handleQuickDemoLogin('customer')}
-                  disabled={busy}
+                  role="tab"
+                  aria-selected={mode === 'signin'}
+                  className={`auth-tab-btn ${mode === 'signin' ? 'active' : ''}`}
+                  onClick={() => {
+                    setMode('signin');
+                    setFormError('');
+                  }}
                 >
-                  Demo Customer
+                  Sign In
                 </button>
+
                 <button
                   type="button"
-                  className="btn-demo-pill admin-pill"
-                  onClick={() => handleQuickDemoLogin('admin')}
-                  disabled={busy}
+                  role="tab"
+                  aria-selected={mode === 'signup'}
+                  className={`auth-tab-btn ${mode === 'signup' ? 'active' : ''}`}
+                  onClick={() => {
+                    setMode('signup');
+                    setFormError('');
+                  }}
                 >
-                  Demo Admin
+                  Create Account
                 </button>
               </div>
-            </div>
+            )}
 
-            {/* Error Banner */}
+            {/* Error Message */}
             {formError && (
               <div className="auth-alert-error" role="alert">
-                <span className="alert-icon">!</span>
                 <span>{formError}</span>
               </div>
             )}
 
+            {/* Main Form */}
             <form onSubmit={handleSubmit} className="auth-main-form" noValidate>
-              {mode === 'signup' && (
+              {(mode === 'signup' || mode === 'admin-signup') && (
                 <div className="form-group">
-                  <label htmlFor="auth-name">Full Name</label>
+                  <label htmlFor="auth-name">
+                    {mode === 'admin-signup' ? 'Admin Full Name' : 'Full Name'}
+                  </label>
                   <input
                     id="auth-name"
                     type="text"
-                    placeholder="e.g. Eleanor Vance"
+                    placeholder="Your full name"
                     value={name}
                     onChange={e => setName(e.target.value)}
                     required
@@ -235,23 +223,12 @@ export default function AuthPage({ defaultMode = 'signin' }) {
               </div>
 
               <div className="form-group">
-                <div className="label-with-aside">
-                  <label htmlFor="auth-password">Password</label>
-                  {mode === 'signin' && (
-                    <button
-                      type="button"
-                      className="link-aside"
-                      onClick={() => addToast('Demo mode: any 4+ character password or click Fast Demo above.', 'info')}
-                    >
-                      Forgot?
-                    </button>
-                  )}
-                </div>
+                <label htmlFor="auth-password">Password</label>
                 <div className="password-input-wrap">
                   <input
                     id="auth-password"
                     type={showPassword ? 'text' : 'password'}
-                    placeholder="Enter your password"
+                    placeholder="••••••••"
                     value={password}
                     onChange={e => setPassword(e.target.value)}
                     required
@@ -268,6 +245,20 @@ export default function AuthPage({ defaultMode = 'signin' }) {
                 </div>
               </div>
 
+              {mode === 'admin-signup' && (
+                <div className="form-group">
+                  <label htmlFor="auth-confirm-password">Confirm Admin Password</label>
+                  <input
+                    id="auth-confirm-password"
+                    type={showPassword ? 'text' : 'password'}
+                    placeholder="••••••••"
+                    value={confirmPassword}
+                    onChange={e => setConfirmPassword(e.target.value)}
+                    required
+                  />
+                </div>
+              )}
+
               <div className="form-row-remember">
                 <label className="checkbox-label">
                   <input
@@ -275,7 +266,7 @@ export default function AuthPage({ defaultMode = 'signin' }) {
                     checked={rememberMe}
                     onChange={e => setRememberMe(e.target.checked)}
                   />
-                  <span>Remember me on this browser</span>
+                  <span>Remember me</span>
                 </label>
               </div>
 
@@ -285,17 +276,33 @@ export default function AuthPage({ defaultMode = 'signin' }) {
                 disabled={busy}
               >
                 {busy
-                  ? 'Processing…'
+                  ? 'Please wait…'
                   : mode === 'signin'
-                  ? 'Sign In to Account'
-                  : 'Complete Registration'}
+                  ? 'Sign In'
+                  : mode === 'admin-signup'
+                  ? 'Register Administrator'
+                  : 'Create Account'}
               </button>
             </form>
 
+            {/* Bottom Navigation Prompts */}
             <div className="auth-footer-prompt">
-              {mode === 'signin' ? (
+              {mode === 'admin-signup' ? (
                 <p>
-                  New to {config.storeName}?{' '}
+                  <button
+                    type="button"
+                    className="link-switch"
+                    onClick={() => {
+                      setMode('signin');
+                      setFormError('');
+                    }}
+                  >
+                    ← Back to customer sign in
+                  </button>
+                </p>
+              ) : mode === 'signin' ? (
+                <p>
+                  Don't have an account?{' '}
                   <button
                     type="button"
                     className="link-switch"
@@ -304,7 +311,7 @@ export default function AuthPage({ defaultMode = 'signin' }) {
                       setFormError('');
                     }}
                   >
-                    Create an account
+                    Create account
                   </button>
                 </p>
               ) : (
@@ -318,9 +325,25 @@ export default function AuthPage({ defaultMode = 'signin' }) {
                       setFormError('');
                     }}
                   >
-                    Sign in here
+                    Sign in
                   </button>
                 </p>
+              )}
+
+              {/* Admin creation option: ONLY visible when fewer than 2 admin accounts exist */}
+              {canRegisterAdmin && mode !== 'admin-signup' && (
+                <div className="auth-admin-option-wrap">
+                  <button
+                    type="button"
+                    className="link-admin-subtle"
+                    onClick={() => {
+                      setMode('admin-signup');
+                      setFormError('');
+                    }}
+                  >
+                    Register as Administrator
+                  </button>
+                </div>
               )}
             </div>
 

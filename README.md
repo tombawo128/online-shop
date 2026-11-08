@@ -1,4 +1,4 @@
-<img width="1917" height="1079" alt="Screenshot 2026-11-08 133033" src="https://github.com/user-attachments/assets/e575d2c7-69d2-4ee7-9272-f72dbe6d250b" />
+
 
 <div align="center">
 
@@ -198,14 +198,16 @@ The included `vercel.json` handles client-side routing, so every route works on 
 
 ## 🖼 Screenshots
 
-| Storefront | Product Page |
+| Storefront |
 |------------|--------------|
-| <img width="1917" height="1079" alt="Screenshot 2026-11-08 133033" src="https://github.com/user-attachments/assets/e575d2c7-69d2-4ee7-9272-f72dbe6d250b" />![Uploading Screenshot 2026-11-08 133241.png…]()
 | <img width="1917" height="1079" alt="Screenshot 2026-11-08 133033" src="https://github.com/user-attachments/assets/e575d2c7-69d2-4ee7-9272-f72dbe6d250b" />
-| Cart Drawer | Admin Dashboard |
+| Product Page |
+| <img width="1917" height="1079" alt="Screenshot 2026-11-08 133033" src="https://github.com/user-attachments/assets/e575d2c7-69d2-4ee7-9272-f72dbe6d250b" /> | Admin Dashboard |
 |-------------|-----------------|
-| <img width="1918" height="1074" alt="Screenshot 2026-11-08 133300" src="https://github.com/user-attachments/assets/7c404db2-b296-4469-bc20-99581a21bb3e" /><img width="1919" height="994" alt="Screenshot 2026-11-08 133315" src="https://github.com/user-attachments/assets/5a434f36-9241-461b-bb2b-cece0a771596" />
- |  |
+| <img width="1918" height="1074" alt="Screenshot 2026-11-08 133300" src="https://github.com/user-attachments/assets/7c404db2-b296-4469-bc20-99581a21bb3e" />
+| Cart Drawer |
+<img width="1919" height="994" alt="Screenshot 2026-11-08 133315" src="https://github.com/user-attachments/assets/5a434f36-9241-461b-bb2b-cece0a771596" />
+
 
 ---
 

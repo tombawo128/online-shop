@@ -201,7 +201,7 @@ The included `vercel.json` handles client-side routing, so every route works on 
 ` Storefront`
 
  <img width="1917" height="1079" alt="Screenshot 2026-11-08 133033" src="https://github.com/user-attachments/assets/e575d2c7-69d2-4ee7-9272-f72dbe6d250b" />
-` Product Page `
+ `Product Page`
 
  <img width="1918" height="1079" alt="Screenshot 2026-11-08 133241" src="https://github.com/user-attachments/assets/11516190-8a5e-459b-ad69-564a1688e973" />
 

@@ -219,8 +219,7 @@ The included `vercel.json` handles client-side routing, so every route works on 
 
 ## 📜 License
 
-Add your license here (for example, MIT). See [`LICENSE`](LICENSE) for details.
-
+This is only a demo-page
 ---
 
 <div align="center">

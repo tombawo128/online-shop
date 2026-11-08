@@ -198,19 +198,19 @@ The included `vercel.json` handles client-side routing, so every route works on 
 
 ## 🖼 Screenshots
 
-| Storefront |
-|------------|--------------|
-| <img width="1917" height="1079" alt="Screenshot 2026-11-08 133033" src="https://github.com/user-attachments/assets/e575d2c7-69d2-4ee7-9272-f72dbe6d250b" />
-| Product Page |
+** Storefront **
 
-| <img width="1918" height="1079" alt="Screenshot 2026-11-08 133241" src="https://github.com/user-attachments/assets/11516190-8a5e-459b-ad69-564a1688e973" />
+ <img width="1917" height="1079" alt="Screenshot 2026-11-08 133033" src="https://github.com/user-attachments/assets/e575d2c7-69d2-4ee7-9272-f72dbe6d250b" />
+** Product Page **
+
+ <img width="1918" height="1079" alt="Screenshot 2026-11-08 133241" src="https://github.com/user-attachments/assets/11516190-8a5e-459b-ad69-564a1688e973" />
 
 
-| Cart Drawer |
+** Cart Drawer **
 
-| <img width="1918" height="1074" alt="Screenshot 2026-11-08 133300" src="https://github.com/user-attachments/assets/7c404db2-b296-4469-bc20-99581a21bb3e" /> 
+ <img width="1918" height="1074" alt="Screenshot 2026-11-08 133300" src="https://github.com/user-attachments/assets/7c404db2-b296-4469-bc20-99581a21bb3e" /> 
 
-| Admin Dashboard |
+** Admin Dashboard **
 
 <img width="1919" height="994" alt="Screenshot 2026-11-08 133315" src="https://github.com/user-attachments/assets/5a434f36-9241-461b-bb2b-cece0a771596" />
 

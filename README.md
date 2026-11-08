@@ -1,3 +1,4 @@
+
 <div align="center">
 
 # 🧵 Urban Thread
@@ -14,7 +15,7 @@
 [Live Demo](https://your-app.vercel.app) · [Report a Bug](../../issues) · [Request a Feature](../../issues)
 
 <!-- Add a hero screenshot or GIF of the storefront here -->
-<img src="docs/images/banner.png" alt="Urban Thread storefront preview" width="800"/>
+<img width="1917" height="1079" alt="Screenshot 2026-11-08 133033" src="https://github.com/user-attachments/assets/f03d0a38-0de9-4db8-aad5-553e60beb442" />
 
 </div>
 

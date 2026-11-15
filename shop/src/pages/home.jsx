@@ -2,12 +2,15 @@ import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useStore } from '../context/store.jsx';
 import { Grid } from '../components/productcard.jsx';
+import { supabase } from '../lib/supabase.js';
 
 export default function Home() {
   const { products, loading, addToast } = useStore();
   const [filterTab, setFilterTab] = useState('all');
   const [newsletterEmail, setNewsletterEmail] = useState('');
   const [newsletterSuccess, setNewsletterSuccess] = useState(false);
+  const [newsletterBusy, setNewsletterBusy] = useState(false);
+  const [newsletterError, setNewsletterError] = useState('');
 
   const displayedProducts = products
     .filter(p => {
@@ -17,14 +20,27 @@ export default function Home() {
     })
     .slice(0, 8);
 
-  const handleNewsletter = (e) => {
+  const handleNewsletter = async (e) => {
     e.preventDefault();
-    if (!newsletterEmail.trim() || !newsletterEmail.includes('@')) {
-      addToast('Please enter a valid email address', 'error');
+    setNewsletterError('');
+    const email = newsletterEmail.trim().toLowerCase();
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      setNewsletterError('Enter a valid email address.');
+      return;
+    }
+    if (!supabase) {
+      setNewsletterError('Newsletter registration is temporarily unavailable.');
+      return;
+    }
+    setNewsletterBusy(true);
+    const { error } = await supabase.from('newsletter_subscribers').insert({ email });
+    setNewsletterBusy(false);
+    if (error && error.code !== '23505') {
+      setNewsletterError(error.message || 'Subscription could not be saved. Please try again.');
       return;
     }
     setNewsletterSuccess(true);
-    addToast('Welcome! Your discount code is URBAN15', 'success');
+    addToast(error?.code === '23505' ? 'This email is already subscribed.' : 'You are now subscribed.', 'success');
   };
 
   return (
@@ -176,18 +192,18 @@ export default function Home() {
       {/* Newsletter Discount Banner */}
       <section className="newsletter-banner">
         <div className="newsletter-box">
-          <span className="newsletter-tag">SPECIAL OFFER</span>
-          <h2>Get 15% Off Your Order</h2>
+          <span className="newsletter-tag">THE URBAN THREAD EDIT</span>
+          <h2>Stay in the Loop</h2>
           <p>
-            Sign up with your email to receive an instant 15% discount code for your next order.
+            Sign up for new collection announcements and store updates.
           </p>
 
           {newsletterSuccess ? (
             <div className="newsletter-success-box">
               <span className="check-circle">✓</span>
               <div>
-                <strong>You're subscribed!</strong>
-                <p>Use coupon code <strong>URBAN15</strong> at checkout for 15% off.</p>
+                <strong>You’re subscribed!</strong>
+                <p>We’ll keep you updated when new collections arrive.</p>
               </div>
             </div>
           ) : (
@@ -198,10 +214,13 @@ export default function Home() {
                 value={newsletterEmail}
                 onChange={e => setNewsletterEmail(e.target.value)}
                 required
+                maxLength={254}
+                autoComplete="email"
               />
-              <button type="submit" className="btn btn-primary">
-                Get 15% Off
+              <button type="submit" className="btn btn-primary" disabled={newsletterBusy || !supabase}>
+                {newsletterBusy ? 'Subscribing…' : 'Subscribe'}
               </button>
+              {newsletterError && <p role="alert" className="newsletter-error">{newsletterError}</p>}
             </form>
           )}
         </div>

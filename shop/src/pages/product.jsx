@@ -356,7 +356,7 @@ export default function Product() {
               {activeAccordion === 'details' && (
                 <div className="accordion-body">
                   <p>
-                    Engineered with French seams and tailored for an effortlessly relaxed yet refined drape. Finished with natural mother-of-pearl or horn hardware. Model is 5'10" (178cm) wearing size Small.
+                    Refer to the product description above for the item details. Contact the studio if you need help with fit or sizing.
                   </p>
                 </div>
               )}
@@ -374,10 +374,7 @@ export default function Product() {
               {activeAccordion === 'care' && (
                 <div className="accordion-body">
                   <p>
-                    • 100% natural organic origin fibers.<br />
-                    • Cold delicate machine wash inside-out or eco dry clean.<br />
-                    • Reshape while damp and hang dry in shaded air.<br />
-                    • Warm iron with steam for crisp structure.
+                    Care requirements vary by garment and fabric. Follow the care label supplied with the item. If you need more information, contact the studio before ordering.
                   </p>
                 </div>
               )}
@@ -389,13 +386,13 @@ export default function Product() {
                 className="accordion-head"
                 onClick={() => setActiveAccordion(activeAccordion === 'shipping' ? '' : 'shipping')}
               >
-                <span>Complimentary Delivery & Returns</span>
+                <span>Delivery & Order Support</span>
                 <span className="acc-icon">{activeAccordion === 'shipping' ? '−' : '+'}</span>
               </button>
               {activeAccordion === 'shipping' && (
                 <div className="accordion-body">
                   <p>
-                    Complimentary express dispatch on all orders exceeding $75. Tracked delivery in 2-4 business days. Returns accepted within 30 days of receipt in unworn original packaging.
+                    Delivery fees and estimated timelines are shown or confirmed during order coordination. Contact the studio concierge to discuss delivery, exchanges or returns before completing your order.
                   </p>
                 </div>
               )}

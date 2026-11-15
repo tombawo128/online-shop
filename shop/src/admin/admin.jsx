@@ -86,7 +86,7 @@ export default function Admin() {
 
   // Check Supabase session or context user
   useEffect(() => {
-    if (user?.role === 'admin') {
+    if (user?.roleResolved && user?.role === 'admin') {
       setSession(user);
       return;
     }
@@ -108,7 +108,7 @@ export default function Admin() {
 
   // Route guard: Ordinary users cannot view or access the admin page
   useEffect(() => {
-    if (session !== undefined) {
+    if (session !== undefined && (!user || user.roleResolved)) {
       const isAdmin = user?.role === 'admin';
       if (!isAdmin) {
         nav('/login?redirect=/admin', { replace: true });
@@ -117,7 +117,7 @@ export default function Admin() {
   }, [session, user, nav]);
 
   // If loading session or unauthorized, do not render admin panel
-  if (session === undefined || !user || user.role !== 'admin') {
+  if (session === undefined || !user || !user.roleResolved || user.role !== 'admin') {
     return (
       <main className="admin-loading-screen">
         <p>Verifying administrative credentials…</p>

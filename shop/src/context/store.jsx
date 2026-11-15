@@ -51,7 +51,7 @@ export function StoreProvider({ children }) {
   // Derived Admin Accounts & Quota Helpers
   const adminAccounts = useMemo(() => accounts.filter(a => a.role === 'admin'), [accounts]);
   const adminCount = adminAccounts.length;
-  const canRegisterAdmin = adminCount < MAX_ADMIN_ACCOUNTS;
+  const canRegisterAdmin = false; // Admin roles are provisioned out-of-band by a trusted project owner.
 
   // --- Real Live Products State (Synchronized across all users & pages) ---
   const [products, setProducts] = useState(() => (supabase ? [] : seed));
@@ -425,31 +425,6 @@ export function StoreProvider({ children }) {
     addToast('Signed out successfully.', 'info');
     return { success: true };
   }, [addToast]);
-
-  // Remove an admin account
-  const deleteAdminAccount = useCallback((adminId) => {
-    const currentAdmins = accounts.filter(a => a.role === 'admin');
-    if (currentAdmins.length <= 1) {
-      addToast('Cannot remove the primary admin account. At least 1 admin is required.', 'error');
-      return { success: false, error: 'At least 1 admin account must remain.' };
-    }
-
-    const target = accounts.find(a => a.id === adminId && a.role === 'admin');
-    if (!target) {
-      addToast('Admin account not found.', 'error');
-      return { success: false, error: 'Admin account not found.' };
-    }
-
-    setAccounts(prev => prev.filter(a => a.id !== adminId));
-
-    if (user?.id === adminId) {
-      setUser(null);
-      setSession(null);
-    }
-
-    addToast(`Admin account "${target.name}" removed. 1 admin slot freed.`, 'info');
-    return { success: true };
-  }, [accounts, user, addToast]);
 
   // --- Order Placement: all prices and totals are recalculated by PostgreSQL ---
   const saveOrder = useCallback(async (orderData) => {

@@ -56,6 +56,8 @@ export default function Admin() {
     logout,
     products,
     orders,
+    inventory,
+    saveInventoryVariant,
     addProduct,
     updateProduct,
     deleteProduct,
@@ -204,6 +206,12 @@ export default function Admin() {
             Customer Orders ({orders.length})
           </button>
           <button
+            className={`admin-tab-pill ${activeTab === 'inventory' ? 'active' : ''}`}
+            onClick={() => setActiveTab('inventory')}
+          >
+            Inventory
+          </button>
+          <button
             className={`admin-tab-pill ${activeTab === 'admins' ? 'active' : ''}`}
             onClick={() => setActiveTab('admins')}
           >
@@ -223,6 +231,13 @@ export default function Admin() {
 
         {activeTab === 'orders' && (
           <AdminOrdersSection orders={orders} />
+        )}
+        {activeTab === 'inventory' && (
+          <AdminInventorySection
+            products={products}
+            inventory={inventory}
+            saveInventoryVariant={saveInventoryVariant}
+          />
         )}
 
         {activeTab === 'admins' && (
@@ -817,6 +832,112 @@ function AdminProductsSection({ products, addProduct, updateProduct, deleteProdu
           </tbody>
         </table>
       </div>
+    </section>
+  );
+}
+
+// -------------------------------------------------------------
+// Variant Inventory Management
+// -------------------------------------------------------------
+function AdminInventorySection({ products, inventory, saveInventoryVariant }) {
+  const [selectedProductId, setSelectedProductId] = useState(products[0]?.id || '');
+  const [drafts, setDrafts] = useState({});
+  const [savingKey, setSavingKey] = useState('');
+  const selectedProduct = products.find(product => String(product.id) === String(selectedProductId));
+
+  useEffect(() => {
+    if (!selectedProductId && products[0]?.id) setSelectedProductId(products[0].id);
+  }, [products, selectedProductId]);
+
+  const variants = selectedProduct
+    ? (selectedProduct.sizes || []).flatMap(size =>
+        (selectedProduct.colors || []).map(color => ({ size, color }))
+      )
+    : [];
+
+  const variantKey = (size, color) => `${selectedProductId}:${size}:${color}`;
+  const getStock = (size, color) => inventory.find(row =>
+    row.product_id === selectedProductId && row.size === size && row.color === color
+  )?.quantity;
+
+  const handleSave = async (size, color) => {
+    const key = variantKey(size, color);
+    const quantity = drafts[key] ?? getStock(size, color) ?? 0;
+    setSavingKey(key);
+    try {
+      await saveInventoryVariant(selectedProductId, size, color, quantity);
+    } catch {
+      // Store context displays the server error.
+    } finally {
+      setSavingKey('');
+    }
+  };
+
+  return (
+    <section className="admin-products-section">
+      <div className="section-toolbar-row">
+        <div>
+          <h2>Variant stock control</h2>
+          <p className="section-desc">Set stock separately for every size and colour. Tracked stock is checked and decremented atomically when an order is placed.</p>
+        </div>
+        <select
+          className="admin-filter-select"
+          value={selectedProductId}
+          onChange={event => setSelectedProductId(event.target.value)}
+          aria-label="Choose product to manage stock"
+        >
+          {products.map(product => (
+            <option key={product.id} value={product.id}>{product.name}</option>
+          ))}
+        </select>
+      </div>
+
+      {!selectedProduct ? (
+        <div className="admin-empty-state"><p>No products are available to manage.</p></div>
+      ) : (
+        <div className="admin-table-wrap">
+          <table className="admin-data-table">
+            <thead>
+              <tr><th>Size</th><th>Colour</th><th>Available units</th><th>Stock status</th><th>Action</th></tr>
+            </thead>
+            <tbody>
+              {variants.map(({ size, color }) => {
+                const key = variantKey(size, color);
+                const stored = getStock(size, color);
+                const value = drafts[key] ?? (stored == null ? '' : stored);
+                return (
+                  <tr key={key}>
+                    <td>{size}</td>
+                    <td>{color}</td>
+                    <td>
+                      <input
+                        type="number"
+                        min="0"
+                        max="100000"
+                        step="1"
+                        value={value}
+                        onChange={event => setDrafts(prev => ({ ...prev, [key]: event.target.value }))}
+                        aria-label={`Stock for ${selectedProduct.name}, ${size}, ${color}`}
+                      />
+                    </td>
+                    <td>{stored == null ? 'Not tracked' : stored > 0 ? `${stored} available` : 'Out of stock'}</td>
+                    <td>
+                      <button
+                        type="button"
+                        className="btn btn-sm btn-primary"
+                        disabled={savingKey === key || value === '' || !Number.isInteger(Number(value)) || Number(value) < 0}
+                        onClick={() => handleSave(size, color)}
+                      >
+                        {savingKey === key ? 'Saving…' : 'Save stock'}
+                      </button>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      )}
     </section>
   );
 }

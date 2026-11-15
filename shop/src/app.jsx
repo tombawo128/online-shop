@@ -29,8 +29,7 @@ function ScrollToTop() {
 export default function App() {
   const location = useLocation();
   const isAdmin = location.pathname.startsWith('/admin') ||
-                  location.pathname.startsWith(config.adminPath) ||
-                  false;
+    (config.adminPath !== '/admin' && location.pathname.startsWith(config.adminPath));
 
   return (
     <div className="site-wrapper">
@@ -57,8 +56,7 @@ export default function App() {
             <Route path="/signup" element={<AuthPage defaultMode="signup" />} />
             <Route path="/account" element={<AccountPage />} />
             <Route path="/admin" element={<Admin />} />
-            <Route path={config.adminPath} element={<Admin />} />
-            <Route path="/manage-change-this" element={<Admin />} />
+            {config.adminPath !== '/admin' && <Route path={config.adminPath} element={<Admin />} />}
             <Route path="*" element={<NotFound />} />
           </Routes>
         </Suspense>

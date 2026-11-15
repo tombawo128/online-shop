@@ -66,13 +66,7 @@ export default function Admin() {
     addProduct,
     updateProduct,
     deleteProduct,
-    addToast,
-    adminAccounts,
-    adminCount,
-    maxAdmins,
-    canRegisterAdmin,
-    deleteAdminAccount,
-    signup
+    addToast
   } = useStore();
   const nav = useNavigate();
 
@@ -253,15 +247,7 @@ export default function Admin() {
         )}
 
         {activeTab === 'admins' && (
-          <AdminTeamSection
-            adminAccounts={adminAccounts}
-            adminCount={adminCount}
-            maxAdmins={maxAdmins}
-            canRegisterAdmin={canRegisterAdmin}
-            deleteAdminAccount={deleteAdminAccount}
-            signup={signup}
-            currentUser={user}
-          />
+          <AdminTeamSection />
         )}
       </div>
     </main>

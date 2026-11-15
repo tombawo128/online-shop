@@ -1,10 +1,11 @@
 import { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { money } from '../config.js';
 import { useStore } from '../context/store.jsx';
 
 export default function ProductCard({ p }) {
   const { toggleWishlist, isWishlisted, addToCart, addToast } = useStore();
+  const navigate = useNavigate();
   const [hovered, setHovered] = useState(false);
   const wish = isWishlisted(p.id);
 
@@ -14,7 +15,7 @@ export default function ProductCard({ p }) {
     e.preventDefault();
     e.stopPropagation();
     if (p.inventoryTracking) {
-      addToast('Select a size and colour on the product page to check live stock.', 'info');
+      navigate(`/product/${p.id}`);
       return;
     }
     const size = p.sizes?.find(value => !p.soldout?.includes(value)) || '';
@@ -79,7 +80,6 @@ export default function ProductCard({ p }) {
         <button
           className="quick-add-overlay-btn"
           onClick={handleQuickAdd}
-          disabled={p.inventoryTracking}
           aria-label={p.inventoryTracking ? `View stock options for ${p.name}` : `Quick add ${p.name}`}
         >
           + Quick Add

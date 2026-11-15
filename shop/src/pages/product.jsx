@@ -8,7 +8,7 @@ import { Helmet } from 'react-helmet-async';
 
 export default function Product() {
   const { id } = useParams();
-  const { products, loading, addToCart, toggleWishlist, isWishlisted, user } = useStore();
+  const { products, loading, catalogueError, addToCart, toggleWishlist, isWishlisted, user } = useStore();
   const nav = useNavigate();
 
   const product = products.find(x => String(x.id) === String(id));

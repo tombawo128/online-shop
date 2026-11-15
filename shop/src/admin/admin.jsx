@@ -25,63 +25,29 @@ const parseCommaList = (str) => {
 
 
 async function processImageFile(file) {
-  // If Supabase is connected, attempt direct bucket upload
-  if (supabase) {
-    try {
-      const fileExt = file.name.split('.').pop()?.toLowerCase() || 'jpg';
-      const cleanFileName = `${Date.now()}-${Math.random().toString(36).substring(2, 7)}.${fileExt}`;
-      const { error: uploadError } = await supabase.storage.from('products').upload(cleanFileName, file, {
-        cacheControl: '3600',
-        upsert: false
-      });
-      if (!uploadError) {
-        const { data } = supabase.storage.from('products').getPublicUrl(cleanFileName);
-        if (data?.publicUrl) {
-          return data.publicUrl;
-        }
-      }
-    } catch (err) {
-      console.warn('Supabase storage upload failed, falling back to local optimized data URL:', err);
-    }
+  const allowedTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/avif'];
+  if (!file || !allowedTypes.includes(file.type)) {
+    throw new Error('Choose a JPG, PNG, WEBP or AVIF image.');
+  }
+  if (file.size > 5 * 1024 * 1024) {
+    throw new Error('Each product image must be 5 MB or smaller.');
+  }
+  if (!supabase || !isSupabaseConfigured) {
+    throw new Error('Product image uploads require the connected store database.');
   }
 
-  // Optimized client-side image compression fallback
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      const img = new Image();
-      img.onload = () => {
-        const canvas = document.createElement('canvas');
-        const MAX_WIDTH = 1200;
-        const MAX_HEIGHT = 1500;
-        let width = img.width;
-        let height = img.height;
-
-        if (width > height) {
-          if (width > MAX_WIDTH) {
-            height = Math.round((height * MAX_WIDTH) / width);
-            width = MAX_WIDTH;
-          }
-        } else {
-          if (height > MAX_HEIGHT) {
-            width = Math.round((width * MAX_HEIGHT) / height);
-            height = MAX_HEIGHT;
-          }
-        }
-
-        canvas.width = width;
-        canvas.height = height;
-        const ctx = canvas.getContext('2d');
-        ctx.drawImage(img, 0, 0, width, height);
-        const compressedDataUrl = canvas.toDataURL('image/jpeg', 0.82);
-        resolve(compressedDataUrl);
-      };
-      img.onerror = () => resolve(e.target.result);
-      img.src = e.target.result;
-    };
-    reader.onerror = (err) => reject(err);
-    reader.readAsDataURL(file);
+  const extension = file.type === 'image/jpeg' ? 'jpg' : file.type.split('/')[1];
+  const fileName = `${crypto.randomUUID()}.${extension}`;
+  const { error } = await supabase.storage.from('products').upload(fileName, file, {
+    cacheControl: '31536000',
+    upsert: false,
+    contentType: file.type
   });
+  if (error) throw new Error(error.message || 'Image upload failed.');
+
+  const { data } = supabase.storage.from('products').getPublicUrl(fileName);
+  if (!data?.publicUrl) throw new Error('The uploaded image URL could not be generated.');
+  return data.publicUrl;
 }
 
 export default function Admin() {
@@ -141,7 +107,7 @@ export default function Admin() {
   // Route guard: Ordinary users cannot view or access the admin page
   useEffect(() => {
     if (session !== undefined) {
-      const isAdmin = user?.role === 'admin' || session?.user?.email?.includes('admin');
+      const isAdmin = user?.role === 'admin';
       if (!isAdmin) {
         nav('/login?redirect=/admin', { replace: true });
       }
@@ -278,213 +244,31 @@ export default function Admin() {
 // -------------------------------------------------------------
 // Admin Team & Security Quota Management Section
 // -------------------------------------------------------------
-function AdminTeamSection({
-  adminAccounts,
-  adminCount,
-  maxAdmins,
-  canRegisterAdmin,
-  deleteAdminAccount,
-  signup,
-  currentUser
-}) {
-  const [showAddForm, setShowAddForm] = useState(false);
-  const [newAdminName, setNewAdminName] = useState('');
-  const [newAdminEmail, setNewAdminEmail] = useState('');
-  const [newAdminPassword, setNewAdminPassword] = useState('');
-  const [formError, setFormError] = useState('');
-  const [busy, setBusy] = useState(false);
-
-  const handleRegisterSecondAdmin = async (e) => {
-    e.preventDefault();
-    setFormError('');
-
-    if (!canRegisterAdmin) {
-      setFormError(`Maximum limit of ${maxAdmins} admin accounts already reached.`);
-      return;
-    }
-    if (!newAdminName.trim() || !newAdminEmail.trim() || !newAdminPassword.trim()) {
-      setFormError('Please fill in all administrator fields.');
-      return;
-    }
-
-    setBusy(true);
-    const res = await signup(newAdminName, newAdminEmail, newAdminPassword, 'admin');
-    setBusy(false);
-
-    if (res.success) {
-      setShowAddForm(false);
-      setNewAdminName('');
-      setNewAdminEmail('');
-      setNewAdminPassword('');
-    } else {
-      setFormError(res.error || 'Failed to create admin account.');
-    }
-  };
-
+function AdminTeamSection() {
   return (
     <section className="admin-team-section">
       <div className="section-toolbar-row">
         <div>
-          <h2>Administrator Accounts ({adminCount} of {maxAdmins})</h2>
+          <h2>Administrator access</h2>
           <p className="section-desc">
-            For security, exactly <strong>{maxAdmins} administrator accounts</strong> can be registered.
+            Administrator privileges are assigned through the protected Supabase user_roles table.
+            They cannot be created, elevated or removed from a public browser session.
           </p>
         </div>
-
-        {canRegisterAdmin && (
-          <button
-            className="btn btn-primary"
-            onClick={() => setShowAddForm(!showAddForm)}
-          >
-            {showAddForm ? '✕ Close Form' : '+ Register 2nd Admin Account'}
-          </button>
-        )}
       </div>
-
-      {/* Quota Banner */}
-      <div className={`admin-quota-banner ${canRegisterAdmin ? 'banner-slots-open' : 'banner-slots-full'}`}>
+      <div className="admin-quota-banner banner-slots-full">
         <div className="quota-banner-body">
-          <strong>
-            {canRegisterAdmin
-              ? `1 of ${maxAdmins} Admin Accounts Available`
-              : `All ${maxAdmins} Admin Accounts Configured (Maximum Limit)`}
-          </strong>
+          <strong>Protected administrator provisioning</strong>
           <p>
-            {canRegisterAdmin
-              ? `You can register 1 more administrator account. Once 2 admin accounts are registered, the registration option is automatically removed.`
-              : `The maximum limit of 2 admin accounts is active. To add a different admin, you must first remove one below.`}
+            Ask the project owner to provision or revoke an administrator role using the trusted
+            Supabase SQL editor. This prevents customers from granting themselves store access.
           </p>
         </div>
-      </div>
-
-      {/* Register 2nd Admin Form */}
-      {showAddForm && canRegisterAdmin && (
-        <div className="admin-product-form-box">
-          <div className="form-head">
-            <h3>Register 2nd Administrator Account</h3>
-            <button type="button" className="btn btn-sm btn-ghost" onClick={() => setShowAddForm(false)}>
-              ✕ Cancel
-            </button>
-          </div>
-
-          {formError && <div className="admin-alert-error">{formError}</div>}
-
-          <form onSubmit={handleRegisterSecondAdmin} className="admin-grid-form">
-            <div className="form-group">
-              <label>Admin Full Name</label>
-              <input
-                type="text"
-                placeholder="e.g. Marcus Reid"
-                value={newAdminName}
-                onChange={e => setNewAdminName(e.target.value)}
-                required
-              />
-            </div>
-
-            <div className="form-group">
-              <label>Admin Email Address</label>
-              <input
-                type="email"
-                placeholder="admin2@urbanthread.com"
-                value={newAdminEmail}
-                onChange={e => setNewAdminEmail(e.target.value)}
-                required
-              />
-            </div>
-
-            <div className="form-group">
-              <label>Password</label>
-              <input
-                type="password"
-                placeholder="••••••••"
-                value={newAdminPassword}
-                onChange={e => setNewAdminPassword(e.target.value)}
-                required
-              />
-            </div>
-
-            <div className="full-span form-actions">
-              <button type="submit" className="btn btn-primary" disabled={busy}>
-                {busy ? 'Registering…' : `Confirm & Register Admin (Slot 2 of ${maxAdmins})`}
-              </button>
-            </div>
-          </form>
-        </div>
-      )}
-
-      {/* Admin Accounts List */}
-      <div className="admin-cards-grid">
-        {adminAccounts.map((adm, idx) => (
-          <div key={adm.id} className="admin-account-card">
-            <div className="admin-card-header">
-              <div className="admin-card-avatar">
-                {(adm.name || adm.email || 'A').slice(0, 2).toUpperCase()}
-              </div>
-              <div className="admin-card-title">
-                <strong>{adm.name}</strong>
-                <span className="admin-card-slot">
-                  Slot {idx + 1} of {maxAdmins} {idx === 0 ? '(Primary Admin)' : '(Co-Admin)'}
-                </span>
-              </div>
-            </div>
-
-            <div className="admin-card-details">
-              <div className="detail-line">
-                <span className="detail-key">Email:</span>
-                <span className="detail-val">{adm.email}</span>
-              </div>
-              <div className="detail-line">
-                <span className="detail-key">Role:</span>
-                <span className="detail-val role-badge-admin">Store Administrator</span>
-              </div>
-              {adm.createdAt && (
-                <div className="detail-line">
-                  <span className="detail-key">Created:</span>
-                  <span className="detail-val">{new Date(adm.createdAt).toLocaleDateString()}</span>
-                </div>
-              )}
-            </div>
-
-            <div className="admin-card-actions">
-              {idx === 0 ? (
-                <span className="primary-lock-note">🔒 Primary account protected</span>
-              ) : (
-                <button
-                  type="button"
-                  className="btn btn-sm btn-outline btn-danger"
-                  onClick={() => {
-                    if (window.confirm(`Are you sure you want to remove admin account "${adm.name}"? This will free up slot 2 of 2.`)) {
-                      deleteAdminAccount(adm.id);
-                    }
-                  }}
-                >
-                  🗑 Remove Admin (Free Slot 2)
-                </button>
-              )}
-            </div>
-          </div>
-        ))}
-
-        {/* Empty Slot Card if only 1 admin exists */}
-        {canRegisterAdmin && (
-          <div className="admin-account-card admin-empty-slot-card">
-            <h4>Slot 2 of {maxAdmins} Available</h4>
-            <p>You can add 1 more administrator to help manage your store.</p>
-            <button
-              type="button"
-              className="btn btn-outline btn-sm"
-              onClick={() => setShowAddForm(true)}
-            >
-              + Register 2nd Admin
-            </button>
-          </div>
-        )}
       </div>
     </section>
   );
 }
 
-// -------------------------------------------------------------
 // Admin Products Management Section with Direct File Upload
 // -------------------------------------------------------------
 function AdminProductsSection({ products, addProduct, updateProduct, deleteProduct, addToast }) {
@@ -1049,43 +833,29 @@ function AdminOrdersSection({ orders }) {
   }, [orders]);
 
   const handleStatusChange = async (orderId, newStatus) => {
-    setOrdersList(prev => prev.map(o => o.id === orderId ? { ...o, status: newStatus } : o));
-    if (supabase) {
-      try {
-        await supabase.from('orders').update({ status: newStatus }).eq('id', orderId);
-      } catch (e) {
-        console.warn(e);
-      }
+    if (!['pending', 'contacted', 'paid', 'delivered', 'cancelled'].includes(newStatus)) return;
+    const previous = ordersList;
+    setOrdersList(prev => prev.map(order => order.id === orderId ? { ...order, status: newStatus } : order));
+    if (!supabase) {
+      setOrdersList(previous);
+      return;
     }
-    try {
-      const stored = JSON.parse(localStorage.getItem('urban_thread_orders_v2')) || [];
-      localStorage.setItem('urban_thread_orders_v2', JSON.stringify(
-        stored.map(o => o.id === orderId ? { ...o, status: newStatus } : o)
-      ));
-    } catch (e) {
-      console.warn(e);
+    const { error } = await supabase.from('orders').update({ status: newStatus }).eq('id', orderId);
+    if (error) {
+      setOrdersList(previous);
+      window.alert('Order status could not be updated: ' + error.message);
     }
   };
 
   const handleDeleteOrder = async (orderId) => {
-    if (window.confirm('Delete this order record permanently?')) {
-      setOrdersList(prev => prev.filter(o => o.id !== orderId));
-      if (supabase) {
-        try {
-          await supabase.from('orders').delete().eq('id', orderId);
-        } catch (e) {
-          console.warn(e);
-        }
-      }
-      try {
-        const stored = JSON.parse(localStorage.getItem('urban_thread_orders_v2')) || [];
-        localStorage.setItem('urban_thread_orders_v2', JSON.stringify(
-          stored.filter(o => o.id !== orderId)
-        ));
-      } catch (e) {
-        console.warn(e);
-      }
+    if (!window.confirm('Delete this order record permanently?')) return;
+    if (!supabase) return;
+    const { error } = await supabase.from('orders').delete().eq('id', orderId);
+    if (error) {
+      window.alert('Order could not be deleted: ' + error.message);
+      return;
     }
+    setOrdersList(prev => prev.filter(order => order.id !== orderId));
   };
 
   const filtered = ordersList.filter(o => {

@@ -1,6 +1,8 @@
 export function validateProductInput(product) {
   const name = String(product?.name || '').trim();
   const gender = String(product?.gender || '');
+  const category = String(product?.category || '').trim();
+  const description = String(product?.description || '');
   const price = Number(product?.price);
   const sizes = Array.isArray(product?.sizes) ? product.sizes : [];
   const colors = Array.isArray(product?.colors) ? product.colors : [];
@@ -8,6 +10,8 @@ export function validateProductInput(product) {
 
   if (name.length < 2 || name.length > 160) return 'Product name must contain 2 to 160 characters.';
   if (!['women', 'men'].includes(gender)) return 'Select a valid product department.';
+  if (category.length < 2 || category.length > 60) return 'Product category must contain 2 to 60 characters.';
+  if (description.length > 3000) return 'Product description must be 3,000 characters or fewer.';
   if (!Number.isFinite(price) || price < 0 || price > 10000000) return 'Enter a valid product price.';
   if (!sizes.length || sizes.length > 30 || sizes.some(value => !String(value).trim())) return 'Add at least one valid size.';
   if (!colors.length || colors.length > 30 || colors.some(value => !String(value).trim())) return 'Add at least one valid colour.';

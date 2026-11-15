@@ -494,6 +494,30 @@ export function StoreProvider({ children }) {
     return createdOrder;
   }, [user]);
 
+  const updateOrderStatus = useCallback(async (orderId, status) => {
+    requireAdmin();
+    if (!['pending', 'contacted', 'paid', 'delivered', 'cancelled'].includes(status)) {
+      throw new Error('Invalid order status.');
+    }
+    const { data, error } = await supabase
+      .from('orders')
+      .update({ status })
+      .eq('id', orderId)
+      .select('*')
+      .single();
+    if (error) throw new Error(error.message || 'Order status could not be updated.');
+    setOrders(prev => prev.map(order => order.id === orderId ? data : order));
+    return data;
+  }, [user]);
+
+  const deleteOrder = useCallback(async (orderId) => {
+    requireAdmin();
+    const { error } = await supabase.from('orders').delete().eq('id', orderId);
+    if (error) throw new Error(error.message || 'Order could not be deleted.');
+    setOrders(prev => prev.filter(order => order.id !== orderId));
+    return { success: true };
+  }, [user]);
+
   // --- Product Management: writes require a database-verified administrator role ---
   const requireAdmin = () => {
     if (!supabase || user?.role !== 'admin') {
@@ -664,6 +688,8 @@ export function StoreProvider({ children }) {
         // Orders
         orders,
         saveOrder,
+        updateOrderStatus,
+        deleteOrder,
 
         // User & Accounts & Quotas
         user,

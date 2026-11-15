@@ -102,8 +102,15 @@ begin
     raise exception 'Administrator setup has not been authorized by the store owner';
   end if;
 
-  if lower(coalesce(auth.jwt()->>'email', '')) <> v_authorized_email then
-    raise exception 'This email address is not authorized to claim store administrator access';
+  if lower(coalesce(auth.jwt()->>'email', '')) <> v_authorized_email
+    or not exists (
+      select 1
+      from auth.users
+      where id = v_user_id
+        and email_confirmed_at is not null
+        and lower(email) = v_authorized_email
+    ) then
+    raise exception 'Use the verified owner email address authorized for this store';
   end if;
 
   perform pg_advisory_xact_lock(hashtext('urban_thread_admin_role_limit'));

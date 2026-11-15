@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { useStore } from '../context/store.jsx';
 import { Grid } from '../components/productcard.jsx';
 import { supabase } from '../lib/supabase.js';
+import { Helmet } from 'react-helmet-async';
 
 export default function Home() {
   const { products, loading, addToast } = useStore();
@@ -45,6 +46,10 @@ export default function Home() {
 
   return (
     <main className="home-page">
+      <Helmet>
+        <title>Urban Thread | Contemporary Fashion for Women & Men</title>
+        <meta name="description" content="Explore contemporary clothing, everyday essentials and new arrivals for women and men at Urban Thread." />
+      </Helmet>
       {/* Clean Hero Section */}
       <section className="hero-editorial">
         <div className="hero-backdrop">

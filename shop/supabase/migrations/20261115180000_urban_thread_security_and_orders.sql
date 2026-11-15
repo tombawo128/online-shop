@@ -519,7 +519,7 @@ create policy "store admins manage inventory"
 revoke all on public.user_roles from anon, authenticated;
 grant select on public.user_roles to authenticated;
 revoke insert, update, delete on public.orders from anon, authenticated;
-grant select, update, delete on public.orders to authenticated;
+grant select, update on public.orders to authenticated;
 grant select on public.products to anon, authenticated;
 grant insert, update, delete on public.products to authenticated;
 grant select, insert, update, delete on public.product_inventory to authenticated;

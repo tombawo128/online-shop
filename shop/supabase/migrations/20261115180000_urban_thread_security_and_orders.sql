@@ -35,12 +35,17 @@ security definer
 set search_path = public
 as $fn$
 begin
-  if new.role = 'admin' then
-    if tg_op = 'INSERT' or old.role is distinct from 'admin' then
+  if tg_op = 'INSERT' then
+    if new.role = 'admin' then
       perform pg_advisory_xact_lock(hashtext('urban_thread_admin_role_limit'));
       if (select count(*) from public.user_roles where role = 'admin') >= 2 then
         raise exception 'Urban Thread supports at most two administrator accounts';
       end if;
+    end if;
+  elsif tg_op = 'UPDATE' and new.role = 'admin' and old.role is distinct from 'admin' then
+    perform pg_advisory_xact_lock(hashtext('urban_thread_admin_role_limit'));
+    if (select count(*) from public.user_roles where role = 'admin') >= 2 then
+      raise exception 'Urban Thread supports at most two administrator accounts';
     end if;
   end if;
   return new;

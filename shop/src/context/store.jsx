@@ -112,6 +112,7 @@ export function StoreProvider({ children }) {
   // --- Orders State ---
   const [orders, setOrders] = useState([]);
   const [inventory, setInventory] = useState([]);
+  const [reviews, setReviews] = useState([]);
 
   // --- Auth State ---
   const [user, setUser] = useState(null);
@@ -195,6 +196,7 @@ export function StoreProvider({ children }) {
         setAccounts([]);
         setOrders([]);
         setInventory([]);
+        setReviews([]);
         return;
       }
 
@@ -230,8 +232,14 @@ export function StoreProvider({ children }) {
             .select('*')
             .order('updated_at', { ascending: false });
           if (!inventoryError) setInventory(inventoryRows || []);
+          const { data: reviewRows, error: reviewsError } = await supabase
+            .from('product_reviews')
+            .select('id,product_id,user_id,rating,title,body,status,created_at')
+            .order('created_at', { ascending: false });
+          if (!reviewsError) setReviews(reviewRows || []);
         } else {
           setInventory([]);
+          setReviews([]);
         }
 
         const { data: profileRow, error: profileError } = await supabase
@@ -520,6 +528,26 @@ export function StoreProvider({ children }) {
     }
   };
 
+  const moderateReview = useCallback(async (reviewId, status) => {
+    try {
+      requireAdmin();
+      if (!['published', 'rejected'].includes(status)) throw new Error('Invalid review moderation action.');
+      const { data, error } = await supabase
+        .from('product_reviews')
+        .update({ status })
+        .eq('id', reviewId)
+        .select('id,product_id,user_id,rating,title,body,status,created_at')
+        .single();
+      if (error) throw error;
+      setReviews(prev => prev.map(review => review.id === reviewId ? data : review));
+      addToast(status === 'published' ? 'Review published.' : 'Review rejected.', 'success');
+      return data;
+    } catch (error) {
+      addToast(error.message || 'Review could not be moderated.', 'error');
+      throw error;
+    }
+  }, [addToast, user]);
+
   const saveInventoryVariant = useCallback(async (productId, size, color, quantity) => {
     try {
       requireAdmin();
@@ -629,6 +657,8 @@ export function StoreProvider({ children }) {
         resetCatalog,
         inventory,
         saveInventoryVariant,
+        reviews,
+        moderateReview,
         fuse,
 
         // Cart

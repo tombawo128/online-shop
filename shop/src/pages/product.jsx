@@ -466,7 +466,9 @@ function ProductReviews({ productId, user }) {
     if (error) {
       setMessage(error.code === '23505'
         ? 'You have already submitted a review for this product.'
-        : error.message || 'A verified purchase is required before reviewing this product.');
+        : error.code === '42501'
+          ? 'A paid or delivered order for this product is required before you can review it.'
+          : error.message || 'Your review could not be submitted.');
       return;
     }
     setTitle('');

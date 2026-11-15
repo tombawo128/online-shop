@@ -11,7 +11,7 @@ export function validateProductInput(product) {
   if (!Number.isFinite(price) || price < 0 || price > 10000000) return 'Enter a valid product price.';
   if (!sizes.length || sizes.length > 30 || sizes.some(value => !String(value).trim())) return 'Add at least one valid size.';
   if (!colors.length || colors.length > 30 || colors.some(value => !String(value).trim())) return 'Add at least one valid colour.';
-  if (images.length > 8 || images.some(value => !/^https?:\/\//i.test(String(value)))) return 'Use up to 8 valid HTTP(S) product image URLs.';
+  if (images.length > 8 || images.some(value => !/^https:\/\//i.test(String(value)))) return 'Use up to 8 valid HTTPS product image URLs.';
   const originalPrice = product?.originalPrice === '' || product?.originalPrice == null ? null : Number(product.originalPrice);
   if (originalPrice != null && (!Number.isFinite(originalPrice) || originalPrice < price)) return 'The original price must be greater than or equal to the current price.';
   return null;

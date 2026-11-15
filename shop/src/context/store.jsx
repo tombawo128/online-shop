@@ -42,7 +42,7 @@ function productPayload(product) {
 }
 
 export function StoreProvider({ children }) {
-  // --- Accounts State (Persistent) ---
+  // --- Authenticated account state ---
   // Account identities and roles are resolved from Supabase Auth and user_roles.
   // Never persist passwords, sessions, or administrator claims in browser storage.
   const [accounts, setAccounts] = useState([]);
@@ -59,33 +59,6 @@ export function StoreProvider({ children }) {
   // Sync catalog updates across all open tabs and pages in real time
   const saveCatalog = useCallback((updatedList) => {
     setProducts(updatedList);
-  }, []);
-
-  // Listen to cross-tab and cross-page catalog changes
-  useEffect(() => {
-    const handleCustomSync = (e) => {
-      if (e?.detail && Array.isArray(e.detail)) {
-        setProducts(e.detail);
-      }
-    };
-    const handleStorageChange = (e) => {
-      if (e.key === LOCAL_STORAGE_KEY_STORE_PRODUCTS && e.newValue) {
-        try {
-          const parsed = JSON.parse(e.newValue);
-          if (Array.isArray(parsed)) {
-            setProducts(parsed);
-          }
-        } catch (err) {
-          console.warn(err);
-        }
-      }
-    };
-    window.addEventListener('urban_thread_catalog_sync', handleCustomSync);
-    window.addEventListener('storage', handleStorageChange);
-    return () => {
-      window.removeEventListener('urban_thread_catalog_sync', handleCustomSync);
-      window.removeEventListener('storage', handleStorageChange);
-    };
   }, []);
 
   // --- Cart State ---

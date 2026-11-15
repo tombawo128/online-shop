@@ -205,7 +205,7 @@ export default function Home() {
           <span className="newsletter-tag">THE URBAN THREAD EDIT</span>
           <h2>Stay in the Loop</h2>
           <p>
-            Sign up for new collection announcements and store updates.
+            Join the subscriber list for future collection announcements. Email campaigns will be enabled when a mailing service is connected.
           </p>
 
           {newsletterSuccess ? (
@@ -213,7 +213,7 @@ export default function Home() {
               <span className="check-circle">✓</span>
               <div>
                 <strong>You’re subscribed!</strong>
-                <p>We’ll keep you updated when new collections arrive.</p>
+                <p>Your email has been saved to the subscriber list. Campaign emails are not yet configured.</p>
               </div>
             </div>
           ) : (

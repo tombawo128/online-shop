@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useNavigate, useParams, Link } from 'react-router-dom';
 import { useStore } from '../context/store.jsx';
 import { money } from '../config.js';
@@ -19,7 +19,7 @@ export default function Product() {
   const [validationError, setValidationError] = useState('');
 
   // Auto-select first available color/size if not yet set
-  useMemo(() => {
+  useEffect(() => {
     if (product) {
       if (product.colors && product.colors.length > 0 && !selectedColor) {
         setSelectedColor(product.colors[0]);

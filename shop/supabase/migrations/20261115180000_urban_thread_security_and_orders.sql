@@ -28,7 +28,7 @@ as $$
   );
 $$;
 revoke all on function public.is_store_admin() from public;
-grant execute on function public.is_store_admin() to authenticated;
+grant execute on function public.is_store_admin() to anon, authenticated;
 
 alter table public.orders
   add column if not exists user_id uuid references auth.users(id) on delete set null,
@@ -41,7 +41,11 @@ alter table public.orders
 
 alter table public.products
   add column if not exists is_active boolean not null default true,
-  add column if not exists inventory_tracking boolean not null default false;
+  add column if not exists inventory_tracking boolean not null default false,
+  add column if not exists original_price numeric(12,2),
+  add column if not exists rating numeric(2,1),
+  add column if not exists review_count integer not null default 0,
+  add column if not exists is_new boolean not null default false;
 
 create table if not exists public.product_inventory (
   id uuid primary key default gen_random_uuid(),
@@ -145,7 +149,7 @@ begin
   if length(trim(coalesce(p_state, ''))) = 0 or length(trim(coalesce(p_location, ''))) < 5 then
     raise exception 'A complete delivery address is required';
   end if;
-  if jsonb_typeof(p_items) <> 'array' or jsonb_array_length(p_items) = 0 or jsonb_array_length(p_items) > 30 then
+  if p_items is null or jsonb_typeof(p_items) is distinct from 'array' or jsonb_array_length(p_items) = 0 or jsonb_array_length(p_items) > 30 then
     raise exception 'The order must contain between 1 and 30 items';
   end if;
 
@@ -166,7 +170,7 @@ begin
       when invalid_parameter_value then raise exception 'An order item has an invalid quantity';
     end;
 
-    if v_qty < 1 or v_qty > 20 then
+    if v_qty is null or v_qty < 1 or v_qty > 20 then
       raise exception 'Each product quantity must be between 1 and 20';
     end if;
     v_size := trim(coalesce(v_item->>'size', ''));

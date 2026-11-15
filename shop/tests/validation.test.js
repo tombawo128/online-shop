@@ -5,6 +5,7 @@ import { validateOrderItems, validateProductInput } from '../src/lib/validation.
 const validProduct = {
   name: 'Classic Oxford Shirt',
   gender: 'men',
+  category: 'shirts',
   price: 34,
   originalPrice: 48,
   sizes: ['S', 'M', 'L'],

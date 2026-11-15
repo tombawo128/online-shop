@@ -196,9 +196,11 @@ export default function Product() {
           <div className="pdp-header">
             <div className="pdp-meta-row">
               <span className="pdp-category-tag">{product.category}</span>
-              <span className="pdp-rating-stars">
-                ★ {Number(product.rating || 4.9).toFixed(1)} <span className="review-num">({product.reviewCount || 28} reviews)</span>
-              </span>
+              {Number(product.reviewCount) > 0 && Number(product.rating) > 0 ? (
+                <span className="pdp-rating-stars">
+                  ★ {Number(product.rating).toFixed(1)} <span className="review-num">({product.reviewCount} verified reviews)</span>
+                </span>
+              ) : <span className="pdp-rating-stars">No reviews yet</span>}
             </div>
 
             <h1 className="pdp-title">{product.name}</h1>

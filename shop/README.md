@@ -11,7 +11,7 @@ Urban Thread is a responsive fashion e-commerce storefront for women's and men's
 - Administrator workspace for products, orders, stock and review moderation
 - Supabase Storage product image uploads with type and size validation
 - Server-validated order creation and database-calculated totals
-- Variant-level stock tracking with atomic stock decrement during order placement
+- Variant-level stock tracking with atomic stock decrement during order placement and automatic restoration on cancellation
 - Verified-purchase customer reviews with administrator moderation
 - Newsletter subscriber capture
 - Accessible form labels, validation and loading/error feedback
@@ -75,7 +75,7 @@ Administrator privileges are not assigned by email naming, user metadata, a publ
 - Orders are readable by their owner and administrators. Direct browser inserts are revoked; the `place_store_order` function validates products, variants, quantities, discounts and shipping and calculates the authoritative totals.
 - Tracked inventory is decremented in the same database transaction as order creation.
 - Customer delivery profiles are private to their authenticated owner.
-- Reviews can be submitted only by authenticated users with a matching recorded purchase; new reviews remain pending until approved.
+- Reviews can be submitted only by authenticated users with a paid or delivered order containing the product; new reviews remain pending until approved.
 - Product images are publicly readable, while uploads, updates and deletes require an administrator role. Images are limited to 5 MB and JPEG, PNG, WEBP or AVIF.
 - Newsletter addresses can be submitted publicly; only administrators can read the subscriber list.
 

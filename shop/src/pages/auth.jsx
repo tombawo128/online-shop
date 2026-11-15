@@ -31,7 +31,7 @@ export default function AuthPage({ defaultMode = 'signin' }) {
 
   // If already logged in
   useEffect(() => {
-    if (user) {
+    if (user?.roleResolved) {
       if (user.role === 'admin') {
         nav('/admin');
       } else {

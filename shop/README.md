@@ -49,27 +49,12 @@ For a new project:
 
 1. Run `shop/supabase.sql` once in the Supabase SQL Editor to create the base tables and optional sample catalogue.
 2. Run every SQL file in `shop/supabase/migrations/` in filename order.
-3. Create customer accounts through the storefront.
-4. Provision the first administrator using the SQL below after that person has registered and confirmed their email.
+3. Create the owner account through the storefront and confirm its email.
+4. Sign in with that account and visit `/admin` to claim the one-time administrator setup. The database allows exactly one claim; the setup cannot be repeated from the public website.
 
 For an existing project, review the migration against the live schema and apply the migration file. Do not rerun the bootstrap seed script against a populated production catalogue.
 
-### Provision an administrator
-
-Replace the email with the account that should receive administrator access:
-
-```sql
-insert into public.user_roles (user_id, role)
-select id, 'admin'
-from auth.users
-where lower(email) = lower('admin@example.com')
-on conflict (user_id)
-do update set role = excluded.role;
-```
-
-Administrator privileges are not assigned by email naming, user metadata, a public registration form, or browser state. Revoke access by deleting that user's row from `public.user_roles`.
-
-### Database protections
+### One-time administrator setup\n\nThe first administrator is claimed from the signed-in account at `/admin` after all migrations are applied. The `claim_first_store_admin()` database function serializes concurrent attempts and permanently records the winning account in `public.store_admin_claim`. No administrator registration option is exposed on the public signup page.\n\n### Database protections
 
 - Products are publicly readable only while active; product writes require the database-verified administrator role.
 - Orders are readable by their owner and administrators. Direct browser inserts are revoked; the `place_store_order` function validates products, variants, quantities, discounts and shipping and calculates the authoritative totals.
@@ -99,6 +84,6 @@ The `shop/vercel.json` file configures SPA route fallback. Production deployment
 ## Important operating notes
 
 - No demo administrator credentials or client-side password registry are included.
-- If Supabase is not configured, the app can display its local sample catalogue, but account registration, order submission, newsletter capture, image upload and administrator tools remain unavailable.
+- If Supabase is not configured, the storefront displays no products and clearly reports that the live catalogue is unavailable. It never substitutes a browser-only sample catalogue.
 - Newsletter signups are stored; an email campaign provider is not connected.
 - WhatsApp order handoff is not a payment processor.

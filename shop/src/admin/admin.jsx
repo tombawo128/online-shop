@@ -1089,6 +1089,7 @@ function AdminOrdersSection({ orders, updateOrderStatus, deleteOrder }) {
                     <option value="contacted">Contacted</option>
                     <option value="paid">Paid</option>
                     <option value="delivered">Delivered</option>
+                    <option value="cancelled">Cancelled</option>
                   </select>
 
                   <button

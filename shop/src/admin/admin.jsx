@@ -137,7 +137,7 @@ export default function Admin() {
         <section className="admin-team-section" style={{ maxWidth: 620, margin: '48px auto', padding: 32 }}>
           <span className="section-eyebrow">ONE-TIME STORE SETUP</span>
           <h1>Set up the Urban Threads administrator</h1>
-          <p>Only the first verified account can claim administrator access. This setup is enforced by the database and cannot be repeated from the website.</p>
+          <p>Only the owner email authorized in Supabase can claim administrator access. The database permits one claim only and blocks every other account.</p>
           <p>Signed in as <strong>{user.email}</strong></p>
           {claimError && <p role="alert" className="field-err">{claimError}</p>}
           <button type="button" className="btn btn-primary" onClick={handleClaimAdmin} disabled={claimBusy || !isSupabaseConfigured}>

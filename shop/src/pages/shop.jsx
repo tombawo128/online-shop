@@ -2,6 +2,7 @@ import { useMemo, useState, useEffect } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { useStore } from '../context/store.jsx';
 import { Grid } from '../components/productcard.jsx';
+import { Helmet } from 'react-helmet-async';
 
 export default function Shop() {
   const { products, loading, fuse } = useStore();
@@ -102,6 +103,10 @@ export default function Shop() {
 
   return (
     <main className="shop-page-wrap">
+      <Helmet>
+        <title>{urlQuery ? `Search: ${urlQuery}` : selectedGender ? `${selectedGender === 'women' ? 'Women' : 'Men'}’s Collection` : 'Shop All'} | Urban Thread</title>
+        <meta name="description" content="Browse Urban Thread's clothing collection. Filter by department, category, size, colour and price." />
+      </Helmet>
       {/* Page Header */}
       <div className="shop-header-banner">
         <div className="shop-header-content">

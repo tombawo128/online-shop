@@ -1,0 +1,43 @@
+name: Urban Threads quality checks
+
+on:
+  pull_request:
+    paths:
+      - 'shop/**'
+      - '.github/workflows/urban-threads-checks.yml'
+  push:
+    branches:
+      - master
+    paths:
+      - 'shop/**'
+      - '.github/workflows/urban-threads-checks.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  storefront:
+    name: Storefront tests, build and dependency audit
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: shop
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: shop/package-lock.json
+
+      - name: Install locked dependencies
+        run: npm ci
+
+      - name: Run tests and production build
+        run: npm run check
+
+      - name: Audit production dependencies
+        run: npm audit --omit=dev --audit-level=high

@@ -56,6 +56,8 @@ export default function Admin() {
     logout,
     products,
     orders,
+    updateOrderStatus,
+    deleteOrder,
     inventory,
     saveInventoryVariant,
     reviews,
@@ -236,7 +238,7 @@ export default function Admin() {
         )}
 
         {activeTab === 'orders' && (
-          <AdminOrdersSection orders={orders} />
+          <AdminOrdersSection orders={orders} updateOrderStatus={updateOrderStatus} deleteOrder={deleteOrder} />
         )}
         {activeTab === 'inventory' && (
           <AdminInventorySection
@@ -1008,44 +1010,39 @@ function AdminReviewsSection({ reviews, moderateReview }) {
 // -------------------------------------------------------------
 // Admin Orders Management Section
 // -------------------------------------------------------------
-function AdminOrdersSection({ orders }) {
+function AdminOrdersSection({ orders, updateOrderStatus, deleteOrder }) {
   const [filterStatus, setFilterStatus] = useState('all');
   const [ordersList, setOrdersList] = useState(orders);
+  const [busyOrderId, setBusyOrderId] = useState('');
 
   useEffect(() => {
     setOrdersList(orders);
   }, [orders]);
 
   const handleStatusChange = async (orderId, newStatus) => {
-    if (!['pending', 'contacted', 'paid', 'delivered', 'cancelled'].includes(newStatus)) return;
-    const previous = ordersList;
-    setOrdersList(prev => prev.map(order => order.id === orderId ? { ...order, status: newStatus } : order));
-    if (!supabase) {
-      setOrdersList(previous);
-      return;
-    }
-    const { error } = await supabase.from('orders').update({ status: newStatus }).eq('id', orderId);
-    if (error) {
-      setOrdersList(previous);
-      window.alert('Order status could not be updated: ' + error.message);
+    setBusyOrderId(orderId);
+    try {
+      const updated = await updateOrderStatus(orderId, newStatus);
+      setOrdersList(prev => prev.map(order => order.id === orderId ? updated : order));
+    } catch (error) {
+      window.alert(error.message || 'Order status could not be updated.');
+    } finally {
+      setBusyOrderId('');
     }
   };
 
   const handleDeleteOrder = async (orderId) => {
     if (!window.confirm('Delete this order record permanently?')) return;
-    if (!supabase) return;
-    const { error } = await supabase.from('orders').delete().eq('id', orderId);
-    if (error) {
-      window.alert('Order could not be deleted: ' + error.message);
-      return;
+    setBusyOrderId(orderId);
+    try {
+      await deleteOrder(orderId);
+      setOrdersList(prev => prev.filter(order => order.id !== orderId));
+    } catch (error) {
+      window.alert(error.message || 'Order could not be deleted.');
+    } finally {
+      setBusyOrderId('');
     }
-    setOrdersList(prev => prev.filter(order => order.id !== orderId));
   };
-
-  const filtered = ordersList.filter(o => {
-    if (filterStatus === 'all') return true;
-    return (o.status || 'pending') === filterStatus;
-  });
 
   return (
     <section className="admin-orders-view">

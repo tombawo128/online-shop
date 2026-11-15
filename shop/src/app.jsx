@@ -21,7 +21,7 @@ const NotFound = lazy(() => import('./pages/notfound.jsx'));
 function ScrollToTop() {
   const { pathname } = useLocation();
   useEffect(() => {
-    window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
+    window.scrollTo(0, 0);
   }, [pathname]);
   return null;
 }
@@ -39,7 +39,7 @@ export default function App() {
       <CartDrawer />
       <ToastContainer />
 
-      <main className="main-content-flow">
+      <div className="main-content-flow">
         <Suspense fallback={
           <div className="app-page-loading">
             <div className="loading-spinner" />
@@ -62,7 +62,7 @@ export default function App() {
             <Route path="*" element={<NotFound />} />
           </Routes>
         </Suspense>
-      </main>
+      </div>
 
       {!isAdmin && <Footer />}
     </div>

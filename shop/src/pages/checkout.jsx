@@ -109,7 +109,7 @@ export default function Checkout() {
 
       clearCart();
     } catch (err) {
-      setErrors({ form: 'An issue occurred while recording your order. Please try again.' });
+      setErrors({ form: err.message || 'An issue occurred while recording your order. Please try again.' });
     } finally {
       setBusy(false);
     }

@@ -1,27 +1,31 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useStore } from '../context/store.jsx';
 import { config, money } from '../config.js';
 import { Grid } from '../components/productcard.jsx';
 
 export default function AccountPage() {
-  const { user, logout, orders, wishlist, products, addToCart, toggleWishlist, addToast } = useStore();
+  const { user, profile, saveCustomerProfile, logout, orders, wishlist, products, addToCart, toggleWishlist, addToast } = useStore();
   const nav = useNavigate();
   const [activeTab, setActiveTab] = useState('orders'); // 'orders', 'wishlist', 'settings'
 
-  // Editable delivery profile
-  const [shippingProfile, setShippingProfile] = useState(() => {
-    try {
-      return JSON.parse(localStorage.getItem('urban_shipping_profile')) || {
-        name: user?.name || '',
-        phone: '',
-        state: '',
-        location: ''
-      };
-    } catch {
-      return { name: user?.name || '', phone: '', state: '', location: '' };
-    }
+  // Delivery profile is stored in the customer's protected database row.
+  const [shippingProfile, setShippingProfile] = useState({
+    name: user?.name || '',
+    phone: '',
+    state: '',
+    location: ''
   });
+
+  useEffect(() => {
+    setShippingProfile({
+      name: profile?.full_name || user?.name || '',
+      phone: profile?.phone || '',
+      state: profile?.state || '',
+      location: profile?.location || ''
+    });
+  }, [profile, user]);
+
 
   if (!user) {
     return (
@@ -43,10 +47,18 @@ export default function AccountPage() {
   const myOrders = orders.filter(order => order.user_id === user.id || (order.customer_email && order.customer_email.toLowerCase() === (user.email || '').toLowerCase()));
   const wishlistedProducts = products.filter(p => wishlist.includes(p.id));
 
-  const handleSaveShipping = (e) => {
+  const handleSaveShipping = async (e) => {
     e.preventDefault();
-    localStorage.setItem('urban_shipping_profile', JSON.stringify(shippingProfile));
-    addToast('Shipping address saved for future orders!', 'success');
+    try {
+      await saveCustomerProfile({
+        full_name: shippingProfile.name,
+        phone: shippingProfile.phone,
+        state: shippingProfile.state,
+        location: shippingProfile.location
+      });
+    } catch (error) {
+      addToast(error.message || 'Your delivery profile could not be saved.', 'error');
+    }
   };
 
   const handleLogout = async () => {

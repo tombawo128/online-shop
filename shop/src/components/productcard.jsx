@@ -80,9 +80,9 @@ export default function ProductCard({ p }) {
       <div className="card-info">
         <div className="card-meta">
           <span className="card-cat">{p.category}</span>
-          {p.rating && (
+          {Number(p.reviewCount) > 0 && Number(p.rating) > 0 && (
             <span className="card-rating">
-              ★ {Number(p.rating).toFixed(1)} <span className="rating-count">({p.reviewCount || 12})</span>
+              ★ {Number(p.rating).toFixed(1)} <span className="rating-count">({p.reviewCount})</span>
             </span>
           )}
         </div>

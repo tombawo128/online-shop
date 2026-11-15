@@ -30,7 +30,7 @@ export default function App() {
   const location = useLocation();
   const isAdmin = location.pathname.startsWith('/admin') ||
                   location.pathname.startsWith(config.adminPath) ||
-                  location.pathname.startsWith('/manage-change-this');
+                  false;
 
   return (
     <div className="site-wrapper">

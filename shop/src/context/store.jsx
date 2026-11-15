@@ -526,13 +526,7 @@ export function StoreProvider({ children }) {
     return data;
   }, [user]);
 
-  const deleteOrder = useCallback(async (orderId) => {
-    requireAdmin();
-    const { error } = await supabase.from('orders').delete().eq('id', orderId);
-    if (error) throw new Error(error.message || 'Order could not be deleted.');
-    setOrders(prev => prev.filter(order => order.id !== orderId));
-    return { success: true };
-  }, [user]);
+
 
   // --- Product Management: writes require a database-verified administrator role ---
   const requireAdmin = () => {
@@ -708,7 +702,6 @@ export function StoreProvider({ children }) {
         orders,
         saveOrder,
         updateOrderStatus,
-        deleteOrder,
 
         // User & Accounts & Quotas
         user,

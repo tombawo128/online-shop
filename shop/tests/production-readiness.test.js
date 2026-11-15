@@ -18,6 +18,7 @@ test('administrator setup is a single database-enforced owner claim', () => {
   assert.match(migration, /store_admin_claim/);
   assert.match(migration, /store_admin_setup/);
   assert.match(migration, /auth\.jwt\(\)->>'email'/);
+  assert.match(migration, /email_confirmed_at/);
   assert.match(migration, /pg_advisory_xact_lock/);
   assert.match(migration, /one-time administrator setup has already been claimed/);
   assert.match(admin, /Create the one administrator account/);

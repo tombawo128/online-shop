@@ -86,6 +86,7 @@ export function StoreProvider({ children }) {
   const [orders, setOrders] = useState([]);
   const [inventory, setInventory] = useState([]);
   const [reviews, setReviews] = useState([]);
+  const [newsletterSubscribers, setNewsletterSubscribers] = useState([]);
 
   // --- Auth State ---
   const [user, setUser] = useState(null);
@@ -170,6 +171,7 @@ export function StoreProvider({ children }) {
         setOrders([]);
         setInventory([]);
         setReviews([]);
+        setNewsletterSubscribers([]);
         return;
       }
 
@@ -210,9 +212,15 @@ export function StoreProvider({ children }) {
             .select('id,product_id,user_id,rating,title,body,status,created_at')
             .order('created_at', { ascending: false });
           if (!reviewsError) setReviews(reviewRows || []);
+          const { data: subscriberRows, error: subscribersError } = await supabase
+            .from('newsletter_subscribers')
+            .select('email,subscribed_at')
+            .order('subscribed_at', { ascending: false });
+          if (!subscribersError) setNewsletterSubscribers(subscriberRows || []);
         } else {
           setInventory([]);
           setReviews([]);
+          setNewsletterSubscribers([]);
         }
 
         const { data: profileRow, error: profileError } = await supabase
@@ -656,6 +664,7 @@ export function StoreProvider({ children }) {
         saveInventoryVariant,
         reviews,
         moderateReview,
+        newsletterSubscribers,
         fuse,
 
         // Cart

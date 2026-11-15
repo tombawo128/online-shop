@@ -54,7 +54,14 @@ For a new project:
 
 For an existing project, review the migration against the live schema and apply the migration file. Do not rerun the bootstrap seed script against a populated production catalogue.
 
-### One-time administrator setup\n\nThe first administrator is claimed from the signed-in account at `/admin` after all migrations are applied. The `claim_first_store_admin()` database function serializes concurrent attempts and permanently records the winning account in `public.store_admin_claim`. No administrator registration option is exposed on the public signup page.\n\n### Database protections
+### One-time administrator setup\n\nThe project owner must first authorize the exact owner email in the Supabase SQL Editor (replace the address below with the email that will be used to create the owner account):
+
+```sql
+insert into public.store_admin_setup (singleton, authorized_email)
+values (true, lower('owner@example.com'));
+```
+
+Then create that account through storefront signup, confirm the email, sign in and visit `/admin` to claim the one-time administrator slot. The `claim_first_store_admin()` database function verifies the signed-in email, serializes concurrent attempts and permanently records the winning account in `public.store_admin_claim`. No administrator registration option is exposed on the public signup page.\n\n### Database protections
 
 - Products are publicly readable only while active; product writes require the database-verified administrator role.
 - Orders are readable by their owner and administrators. Direct browser inserts are revoked; the `place_store_order` function validates products, variants, quantities, discounts and shipping and calculates the authoritative totals.

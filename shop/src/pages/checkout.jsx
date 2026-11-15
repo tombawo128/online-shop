@@ -93,12 +93,13 @@ export default function Checkout() {
 
 
       // Format WhatsApp dispatch message
+      const confirmedTotal = Number(created.total);
       const confirmedItems = Array.isArray(created.items) ? created.items : [];
       const itemsText = confirmedItems
         .map(i => `• ${i.qty}x ${i.name} [Size: ${i.size}, Color: ${i.color}] - ${money(i.price * i.qty)}`)
         .join('\n');
 
-      const waMsg = `Hello Urban Thread! 🛍️\nI have placed an order.\n\nOrder Ref: #${created.id}\nCustomer: ${orderData.customer_name}\nPhone: ${orderData.phone}\nDelivery Address: ${orderData.location}, ${orderData.state}\n\nItems:\n${itemsText}\n\nTotal: ${money(total)}\n\nPlease send payment details to complete my order. Thank you!`;
+      const waMsg = `Hello Urban Thread! 🛍️\nI have placed an order.\n\nOrder Ref: #${created.id}\nCustomer: ${orderData.customer_name}\nPhone: ${orderData.phone}\nDelivery Address: ${orderData.location}, ${orderData.state}\n\nItems:\n${itemsText}\n\nTotal: ${money(confirmedTotal)}\n\nPlease send payment details to complete my order. Thank you!`;
 
       setCompletedOrder({
         order: created,

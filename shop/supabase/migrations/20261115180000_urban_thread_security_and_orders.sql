@@ -98,8 +98,10 @@ create table if not exists public.newsletter_subscribers (
     and position('.' in split_part(email, '@', 2)) > 1
   ),
   subscribed_at timestamptz not null default now(),
+  consented_at timestamptz not null default now(),
   source text not null default 'storefront'
 );
+alter table public.newsletter_subscribers add column if not exists consented_at timestamptz not null default now();
 alter table public.newsletter_subscribers enable row level security;
 drop policy if exists "visitors can subscribe" on public.newsletter_subscribers;
 drop policy if exists "store admins read subscribers" on public.newsletter_subscribers;

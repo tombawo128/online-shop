@@ -111,7 +111,8 @@ export default function Checkout() {
       }
 
       // Format WhatsApp dispatch message
-      const itemsText = orderData.items
+      const confirmedItems = Array.isArray(created.items) ? created.items : [];
+      const itemsText = confirmedItems
         .map(i => `• ${i.qty}x ${i.name} [Size: ${i.size}, Color: ${i.color}] - ${money(i.price * i.qty)}`)
         .join('\n');
 
@@ -138,10 +139,10 @@ export default function Checkout() {
       <main className="checkout-success-container">
         <div className="order-receipt-card">
           <div className="receipt-badge-icon">✓</div>
-          <span className="receipt-ref-pill">ORDER #{order.id} CONFIRMED</span>
+          <span className="receipt-ref-pill">ORDER #{order.id} RECEIVED</span>
           <h1>Thank you, {order.customer_name}!</h1>
           <p className="receipt-sub">
-            Your wardrobe request has been reserved. To complete payment and coordinate express delivery, connect directly with our studio concierge on WhatsApp.
+            Your order has been recorded. Contact our studio concierge on WhatsApp to confirm availability and arrange delivery.
           </p>
 
           <div className="whatsapp-action-box">

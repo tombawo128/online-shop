@@ -2,6 +2,7 @@ import { createContext, useContext, useEffect, useMemo, useState, useCallback } 
 import Fuse from 'fuse.js';
 import { supabase, isSupabaseConfigured } from '../lib/supabase.js';
 import { seed } from '../lib/seed.js';
+import { validateOrderItems, validateProductInput } from '../lib/validation.js';
 
 const StoreContext = createContext(null);
 export const useStore = () => useContext(StoreContext);
@@ -486,6 +487,8 @@ export function StoreProvider({ children }) {
     if (!supabase) {
       throw new Error('Checkout is unavailable until the store database is configured.');
     }
+    const itemsError = validateOrderItems(orderData.items);
+    if (itemsError) throw new Error(itemsError);
     const { data, error } = await supabase.rpc('place_store_order', {
       p_customer_name: orderData.customer_name,
       p_customer_email: orderData.customer_email || user?.email || null,
@@ -552,10 +555,9 @@ export function StoreProvider({ children }) {
   const addProduct = useCallback(async (productData) => {
     try {
       requireAdmin();
+      const validationError = validateProductInput(productData);
+      if (validationError) throw new Error(validationError);
       const payload = productPayload(productData);
-      if (!payload.name || !['women', 'men'].includes(payload.gender) || !Number.isFinite(payload.price) || payload.price < 0) {
-        throw new Error('Enter a valid product name, department and price.');
-      }
       const { data, error } = await supabase.from('products').insert(payload).select('*').single();
       if (error) throw error;
       const savedProduct = normalizeProduct(data);

@@ -1114,13 +1114,6 @@ function AdminOrdersSection({ orders, updateOrderStatus }) {
                     <option value="cancelled">Cancelled</option>
                   </select>
 
-                  <button
-                    className="btn-trash-order"
-                    onClick={() => handleDeleteOrder(order.id)}
-                    title="Delete order record"
-                  >
-                    Delete
-                  </button>
                 </div>
               </div>
 

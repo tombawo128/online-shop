@@ -201,6 +201,7 @@ export function StoreProvider({ children }) {
         email: authUser.email,
         name: authUser.user_metadata?.name || authUser.email?.split('@')[0] || 'Customer',
         role: 'customer',
+        roleResolved: false,
         isSupabase: true
       };
       setUser(baseUser);
@@ -215,7 +216,8 @@ export function StoreProvider({ children }) {
 
         const resolvedUser = {
           ...baseUser,
-          role: !roleError && roleRecord?.role === 'admin' ? 'admin' : 'customer'
+          role: !roleError && roleRecord?.role === 'admin' ? 'admin' : 'customer',
+          roleResolved: true
         };
         setUser(current => current?.id === authUser.id ? resolvedUser : current);
         setAccounts(resolvedUser.role === 'admin' ? [resolvedUser] : []);
@@ -366,6 +368,7 @@ export function StoreProvider({ children }) {
       email: data.user.email,
       name: data.user.user_metadata?.name || data.user.email?.split('@')[0] || 'Customer',
       role: roleRecord?.role === 'admin' ? 'admin' : 'customer',
+      roleResolved: true,
       isSupabase: true
     };
     setUser(signedInUser);
@@ -405,6 +408,7 @@ export function StoreProvider({ children }) {
         email: data.user.email,
         name: cleanName,
         role: 'customer',
+        roleResolved: true,
         isSupabase: true
       };
       setUser(signedUpUser);

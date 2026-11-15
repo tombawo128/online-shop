@@ -5,7 +5,7 @@ import { Grid } from '../components/productcard.jsx';
 import { Helmet } from 'react-helmet-async';
 
 export default function Shop() {
-  const { products, loading, fuse } = useStore();
+  const { products, loading, catalogueError, fuse } = useStore();
   const [searchParams, setSearchParams] = useSearchParams();
 
   const urlQuery = searchParams.get('q') || '';
@@ -107,6 +107,7 @@ export default function Shop() {
         <title>{urlQuery ? `Search: ${urlQuery}` : selectedGender ? `${selectedGender === 'women' ? 'Women' : 'Men'}’s Collection` : 'Shop All'} | Urban Thread</title>
         <meta name="description" content="Browse Urban Thread's clothing collection. Filter by department, category, size, colour and price." />
       </Helmet>
+      {catalogueError && <div role="alert" className="newsletter-error" style={{ margin: '24px auto', maxWidth: 1100 }}>{catalogueError}</div>}
       {/* Page Header */}
       <div className="shop-header-banner">
         <div className="shop-header-content">

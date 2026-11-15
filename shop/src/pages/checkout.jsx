@@ -42,10 +42,13 @@ export default function Checkout() {
     if (!form.name.trim() || form.name.trim().length < 2) {
       errs.name = 'Please provide your full name.';
     }
-    if (!form.phone.trim() || !/^\+?[0-9\s-]{7,18}$/.test(form.phone.trim())) {
+    if (!form.phone.trim() || !/^\+?[0-9\s()-]{7,24}$/.test(form.phone.trim())) {
       errs.phone = 'Please provide a valid phone number for delivery updates.';
     }
-    if (form.email.trim() && !/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(form.email.trim())) {\n      errs.email = 'Please provide a valid email address.';\n    }\n    if (!form.state.trim()) {
+    if (form.email.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email.trim())) {
+      errs.email = 'Please provide a valid email address.';
+    }
+    if (!form.state.trim()) {
       errs.state = 'Please specify your state or region.';
     }
     if (!form.location.trim() || form.location.trim().length < 5) {

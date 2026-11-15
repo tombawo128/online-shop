@@ -145,7 +145,7 @@ export default function Admin() {
             {isSupabaseConfigured ? 'Supabase Cloud' : 'Master Live Catalog'}
           </span>
           <span className="admin-slot-header-pill">
-            Admin Accounts: {adminCount}/{maxAdmins}
+            Supabase-verified administrator
           </span>
         </div>
 
@@ -185,11 +185,9 @@ export default function Admin() {
           </div>
 
           <div className="metric-card">
-            <span className="metric-label">Admin Accounts Quota</span>
-            <strong className="metric-val">{adminCount} / {maxAdmins}</strong>
-            <span className="metric-hint">
-              {canRegisterAdmin ? '1 slot available to register' : 'All 2 admin slots filled'}
-            </span>
+            <span className="metric-label">Account Access</span>
+            <strong className="metric-val">Verified</strong>
+            <span className="metric-hint">Role confirmed by Supabase</span>
           </div>
         </section>
 
@@ -223,7 +221,7 @@ export default function Admin() {
             className={`admin-tab-pill ${activeTab === 'admins' ? 'active' : ''}`}
             onClick={() => setActiveTab('admins')}
           >
-            Admin Accounts ({adminCount}/{maxAdmins})
+            Admin Security
           </button>
         </div>
 

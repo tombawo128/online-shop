@@ -149,6 +149,66 @@ set public = true,
     file_size_limit = excluded.file_size_limit,
     allowed_mime_types = excluded.allowed_mime_types;
 
+create or replace function public.set_product_inventory(
+  p_product_id uuid,
+  p_size text,
+  p_color text,
+  p_quantity integer
+)
+returns public.product_inventory
+language plpgsql
+security definer
+set search_path = public
+as $
+declare
+  v_inventory public.product_inventory%rowtype;
+begin
+  if not public.is_store_admin() then
+    raise exception 'Administrator access required';
+  end if;
+  if p_quantity is null or p_quantity < 0 or p_quantity > 100000 then
+    raise exception 'Stock quantity must be between 0 and 100,000';
+  end if;
+  update public.products
+  set inventory_tracking = true
+  where id = p_product_id and p_size = any(coalesce(sizes, '{}'::text[]))
+    and p_color = any(coalesce(colors, '{}'::text[]));
+  if not found then
+    raise exception 'Product or variant not found';
+  end if;
+  insert into public.product_inventory(product_id, size, color, quantity, updated_at)
+  values (p_product_id, trim(p_size), trim(p_color), p_quantity, now())
+  on conflict (product_id, size, color)
+  do update set quantity = excluded.quantity, updated_at = now()
+  returning * into v_inventory;
+  return v_inventory;
+end;
+$;
+revoke all on function public.set_product_inventory(uuid,text,text,integer) from public;
+grant execute on function public.set_product_inventory(uuid,text,text,integer) to authenticated;
+
+create or replace function public.get_product_variant_availability(p_product_id uuid)
+returns table (size text, color text, available boolean)
+language sql
+stable
+security definer
+set search_path = public
+as $
+  select s.size, c.color,
+    case
+      when p.inventory_tracking then coalesce(i.quantity > 0, false)
+      else not (s.size = any(coalesce(p.soldout, '{}'::text[])))
+    end as available
+  from public.products p
+  cross join lateral unnest(coalesce(p.sizes, '{}'::text[])) as s(size)
+  cross join lateral unnest(coalesce(p.colors, '{}'::text[])) as c(color)
+  left join public.product_inventory i
+    on i.product_id = p.id and i.size = s.size and i.color = c.color
+  where p.id = p_product_id and p.is_active = true;
+$;
+revoke all on function public.get_product_variant_availability(uuid) from public;
+grant execute on function public.get_product_variant_availability(uuid) to anon, authenticated;
+
 create or replace function public.place_store_order(
   p_customer_name text,
   p_customer_email text,

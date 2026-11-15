@@ -4,7 +4,7 @@ Urban Thread is a responsive fashion e-commerce storefront for women's and men's
 
 ## Features
 
-- Editorial storefront, product catalogue, search, category filters and sorting
+- Editorial storefront, database-backed product catalogue, search, category filters and sorting
 - Product detail pages with colour and size selection
 - Cart, wishlist, delivery checkout and WhatsApp order handoff
 - Customer accounts, private delivery profiles and order history

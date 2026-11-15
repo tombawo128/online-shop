@@ -3,10 +3,11 @@ import { useNavigate, useParams, Link } from 'react-router-dom';
 import { useStore } from '../context/store.jsx';
 import { money } from '../config.js';
 import { Grid } from '../components/productcard.jsx';
+import { supabase } from '../lib/supabase.js';
 
 export default function Product() {
   const { id } = useParams();
-  const { products, loading, addToCart, toggleWishlist, isWishlisted } = useStore();
+  const { products, loading, addToCart, toggleWishlist, isWishlisted, user } = useStore();
   const nav = useNavigate();
 
   const product = products.find(x => String(x.id) === String(id));
@@ -17,19 +18,66 @@ export default function Product() {
   const [activeImageIndex, setActiveImageIndex] = useState(0);
   const [activeAccordion, setActiveAccordion] = useState('details');
   const [validationError, setValidationError] = useState('');
+  const [variantAvailability, setVariantAvailability] = useState(null);
+  const [availabilityLoading, setAvailabilityLoading] = useState(false);
 
-  // Auto-select first available color/size if not yet set
   useEffect(() => {
-    if (product) {
-      if (product.colors && product.colors.length > 0 && !selectedColor) {
-        setSelectedColor(product.colors[0]);
+    setSelectedSize('');
+    setSelectedColor('');
+    setQuantity(1);
+    setActiveImageIndex(0);
+    setVariantAvailability(null);
+  }, [id]);
+
+  // Load public stock availability without exposing customer or order data.
+  useEffect(() => {
+    let active = true;
+    const loadAvailability = async () => {
+      if (!product?.inventoryTracking || !supabase || !/^[0-9a-f-]{36}$/i.test(String(product.id))) {
+        setVariantAvailability(null);
+        setAvailabilityLoading(false);
+        return;
       }
-      if (product.sizes && product.sizes.length > 0 && !selectedSize) {
-        const firstAvailable = product.sizes.find(s => !product.soldout?.includes(s)) || product.sizes[0];
-        setSelectedSize(firstAvailable);
+      setAvailabilityLoading(true);
+      const { data, error } = await supabase.rpc('get_product_variant_availability', {
+        p_product_id: product.id
+      });
+      if (!active) return;
+      if (error) {
+        console.warn('Variant availability could not be loaded:', error);
+        setVariantAvailability([]);
+      } else {
+        setVariantAvailability(data || []);
       }
+      setAvailabilityLoading(false);
+    };
+    loadAvailability();
+    return () => { active = false; };
+  }, [product?.id, product?.inventoryTracking]);
+
+  const isVariantAvailable = (size, color) => {
+    if (!product) return false;
+    if (!product.inventoryTracking) return !product.soldout?.includes(size);
+    if (variantAvailability === null) return false;
+    return variantAvailability.some(variant =>
+      variant.size === size && variant.color === color && variant.available
+    );
+  };
+
+  // Choose a valid default variant after product and stock information load.
+  useEffect(() => {
+    if (!product) return;
+    const firstColor = product.colors?.[0] || '';
+    const color = selectedColor || firstColor;
+    if (!selectedColor && firstColor) setSelectedColor(firstColor);
+    if (!selectedSize) {
+      const firstAvailable = (product.sizes || []).find(size =>
+        isVariantAvailable(size, color)
+      );
+      if (firstAvailable) setSelectedSize(firstAvailable);
+      else if (!product.inventoryTracking) setSelectedSize(product.sizes?.[0] || '');
     }
-  }, [product, selectedColor, selectedSize]);
+  }, [product, selectedColor, selectedSize, variantAvailability]);
 
   const relatedProducts = useMemo(() => {
     if (!product) return [];
@@ -160,7 +208,7 @@ export default function Product() {
               {product.originalPrice && product.originalPrice > product.price && (
                 <span className="pdp-strike-price">{money(product.originalPrice)}</span>
               )}
-              <span className="pdp-stock-status">✓ In Stock & Ready to Ship</span>
+              <span className="pdp-stock-status">{product.inventoryTracking ? (availabilityLoading ? "Checking availability…" : isVariantAvailable(selectedSize, selectedColor) ? "✓ In Stock & Ready to Ship" : "Currently unavailable") : "Availability confirmed at checkout"}</span>
             </div>
           </div>
 
@@ -205,12 +253,12 @@ export default function Product() {
             </div>
             <div className="pdp-size-chips">
               {(product.sizes || ['One Size']).map(sizeVal => {
-                const isSoldOut = product.soldout?.includes(sizeVal);
+                const isSoldOut = !isVariantAvailable(sizeVal, selectedColor);
                 return (
                   <button
                     key={sizeVal}
                     type="button"
-                    disabled={isSoldOut}
+                    disabled={isSoldOut || (product.inventoryTracking && availabilityLoading)}
                     className={`size-chip ${selectedSize === sizeVal ? 'active' : ''} ${isSoldOut ? 'sold-out' : ''}`}
                     onClick={() => setSelectedSize(sizeVal)}
                     title={isSoldOut ? 'Sold out' : `Select size ${sizeVal}`}
@@ -345,6 +393,8 @@ export default function Product() {
         </div>
       </div>
 
+      <ProductReviews productId={product.id} user={user} />
+
       {/* Related Products Showcase */}
       {relatedProducts.length > 0 && (
         <section className="pdp-related-section">
@@ -356,6 +406,102 @@ export default function Product() {
         </section>
       )}
     </main>
+  );
+}
+
+function ProductReviews({ productId, user }) {
+  const [reviews, setReviews] = useState([]);
+  const [rating, setRating] = useState(5);
+  const [title, setTitle] = useState('');
+  const [body, setBody] = useState('');
+  const [message, setMessage] = useState('');
+  const [busy, setBusy] = useState(false);
+
+  useEffect(() => {
+    let active = true;
+    if (!supabase || !/^[0-9a-f-]{36}$/i.test(String(productId))) return undefined;
+    supabase.from('product_reviews')
+      .select('id,rating,title,body,created_at')
+      .eq('product_id', productId)
+      .eq('status', 'published')
+      .order('created_at', { ascending: false })
+      .then(({ data, error }) => {
+        if (active && !error) setReviews(data || []);
+      });
+    return () => { active = false; };
+  }, [productId]);
+
+  const submitReview = async (event) => {
+    event.preventDefault();
+    setMessage('');
+    if (!user) {
+      setMessage('Sign in with the account used for your purchase to submit a review.');
+      return;
+    }
+    if (title.trim().length < 3 || body.trim().length < 10) {
+      setMessage('Add a title and a review of at least 10 characters.');
+      return;
+    }
+    setBusy(true);
+    const { error } = await supabase.from('product_reviews').insert({
+      product_id: productId,
+      user_id: user.id,
+      rating: Number(rating),
+      title: title.trim(),
+      body: body.trim(),
+      status: 'pending'
+    });
+    setBusy(false);
+    if (error) {
+      setMessage(error.code === '23505'
+        ? 'You have already submitted a review for this product.'
+        : error.message || 'A verified purchase is required before reviewing this product.');
+      return;
+    }
+    setTitle('');
+    setBody('');
+    setMessage('Review submitted. It will appear after moderation and purchase verification.');
+  };
+
+  return (
+    <section className="pdp-related-section" aria-labelledby="product-reviews-heading">
+      <div className="section-head-center">
+        <span className="section-eyebrow">CUSTOMER FEEDBACK</span>
+        <h2 id="product-reviews-heading">Customer Reviews</h2>
+      </div>
+      <div className="reviews-list">
+        {reviews.length ? reviews.map(review => (
+          <article className="accordion-item" key={review.id}>
+            <strong>{'★'.repeat(review.rating)}{'☆'.repeat(5 - review.rating)} · {review.title}</strong>
+            <p>{review.body}</p>
+            <small>{new Date(review.created_at).toLocaleDateString()}</small>
+          </article>
+        )) : <p className="section-desc">No published reviews yet. Reviews are accepted from verified customers.</p>}
+      </div>
+      <form className="admin-grid-form" onSubmit={submitReview}>
+        <h3>Write a review</h3>
+        <div className="form-group">
+          <label htmlFor="review-rating">Rating</label>
+          <select id="review-rating" value={rating} onChange={event => setRating(Number(event.target.value))}>
+            {[5,4,3,2,1].map(value => <option key={value} value={value}>{value} out of 5</option>)}
+          </select>
+        </div>
+        <div className="form-group">
+          <label htmlFor="review-title">Review title</label>
+          <input id="review-title" value={title} maxLength={120} onChange={event => setTitle(event.target.value)} required />
+        </div>
+        <div className="form-group full-span">
+          <label htmlFor="review-body">Your review</label>
+          <textarea id="review-body" value={body} maxLength={2000} rows={4} onChange={event => setBody(event.target.value)} required />
+        </div>
+        {message && <p className="full-span" role="status">{message}</p>}
+        <div className="full-span">
+          <button type="submit" className="btn btn-primary" disabled={busy || !supabase}>
+            {busy ? 'Submitting…' : 'Submit verified review'}
+          </button>
+        </div>
+      </form>
+    </section>
   );
 }
 

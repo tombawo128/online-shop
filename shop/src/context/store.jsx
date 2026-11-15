@@ -478,17 +478,12 @@ export function StoreProvider({ children }) {
       if (!productId || !size || !color || !Number.isInteger(safeQuantity) || safeQuantity < 0 || safeQuantity > 100000) {
         throw new Error('Enter a valid variant and stock quantity between 0 and 100,000.');
       }
-      const { data, error } = await supabase
-        .from('product_inventory')
-        .upsert({
-          product_id: productId,
-          size: String(size).trim(),
-          color: String(color).trim(),
-          quantity: safeQuantity,
-          updated_at: new Date().toISOString()
-        }, { onConflict: 'product_id,size,color' })
-        .select('*')
-        .single();
+      const { data, error } = await supabase.rpc('set_product_inventory', {
+        p_product_id: productId,
+        p_size: String(size).trim(),
+        p_color: String(color).trim(),
+        p_quantity: safeQuantity
+      });
       if (error) throw error;
       setInventory(prev => [
         data,
@@ -496,14 +491,9 @@ export function StoreProvider({ children }) {
       ]);
       const product = products.find(item => item.id === productId);
       if (product && !product.inventoryTracking) {
-        const { data: updatedProduct, error: productError } = await supabase
-          .from('products')
-          .update({ inventory_tracking: true })
-          .eq('id', productId)
-          .select('*')
-          .single();
-        if (productError) throw productError;
-        saveCatalog(products.map(item => item.id === productId ? normalizeProduct(updatedProduct) : item));
+        saveCatalog(products.map(item => item.id === productId
+          ? { ...item, inventoryTracking: true }
+          : item));
       }
       addToast('Variant inventory saved.', 'success');
       return data;

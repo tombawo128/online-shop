@@ -58,6 +58,44 @@ create table if not exists public.product_inventory (
 );
 alter table public.product_inventory enable row level security;
 
+create table if not exists public.product_reviews (
+  id uuid primary key default gen_random_uuid(),
+  product_id uuid not null references public.products(id) on delete cascade,
+  user_id uuid not null references auth.users(id) on delete cascade,
+  rating integer not null check (rating between 1 and 5),
+  title text not null check (length(trim(title)) between 3 and 120),
+  body text not null check (length(trim(body)) between 10 and 2000),
+  status text not null default 'pending' check (status in ('pending','published','rejected')),
+  created_at timestamptz not null default now(),
+  unique (product_id, user_id)
+);
+alter table public.product_reviews enable row level security;
+drop policy if exists "published reviews are public" on public.product_reviews;
+drop policy if exists "verified customers can submit reviews" on public.product_reviews;
+drop policy if exists "customers read own reviews" on public.product_reviews;
+drop policy if exists "store admins moderate reviews" on public.product_reviews;
+create policy "published reviews are public"
+  on public.product_reviews for select
+  using (status = 'published' or user_id = (select auth.uid()) or (select public.is_store_admin()));
+create policy "verified customers can submit reviews"
+  on public.product_reviews for insert to authenticated
+  with check (
+    user_id = (select auth.uid())
+    and status = 'pending'
+    and exists (
+      select 1
+      from public.orders o
+      cross join lateral jsonb_array_elements(o.items) item
+      where o.user_id = (select auth.uid())
+        and item->>'id' = product_reviews.product_id::text
+    )
+  );
+create policy "store admins moderate reviews"
+  on public.product_reviews for all to authenticated
+  using ((select public.is_store_admin()))
+  with check ((select public.is_store_admin()));
+
+
 drop policy if exists "public read products" on public.products;
 drop policy if exists "admin write products" on public.products;
 drop policy if exists "products are publicly readable" on public.products;
@@ -250,4 +288,4 @@ revoke insert, update, delete on public.orders from anon, authenticated;
 grant select, update, delete on public.orders to authenticated;
 grant select on public.products to anon, authenticated;
 grant insert, update, delete on public.products to authenticated;
-grant select, insert, update, delete on public.product_inventory to authenticated;
+grant select, insert, update, delete on public.product_inventory to authenticated;\ngrant select, insert, update, delete on public.product_reviews to authenticated;\ngrant select on public.product_reviews to anon;

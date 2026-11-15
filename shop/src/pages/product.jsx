@@ -287,6 +287,7 @@ export default function Product() {
               <button
                 type="button"
                 onClick={() => setQuantity(Math.max(1, quantity - 1))}
+                disabled={quantity <= 1}
                 aria-label="Decrease quantity"
               >
                 −
@@ -297,7 +298,6 @@ export default function Product() {
                 onClick={() => setQuantity(Math.min(20, quantity + 1))}
                 disabled={quantity >= 20}
                 aria-label={quantity >= 20 ? 'Maximum quantity reached' : 'Increase quantity'}
-                aria-label="Increase quantity"
               >
                 +
               </button>

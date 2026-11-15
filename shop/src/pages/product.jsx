@@ -294,7 +294,9 @@ export default function Product() {
               <span className="qty-number">{quantity}</span>
               <button
                 type="button"
-                onClick={() => setQuantity(Math.min(20, quantity + 1))}\n                disabled={quantity >= 20}\n                aria-label={quantity >= 20 ? 'Maximum quantity reached' : 'Increase quantity'}
+                onClick={() => setQuantity(Math.min(20, quantity + 1))}
+                disabled={quantity >= 20}
+                aria-label={quantity >= 20 ? 'Maximum quantity reached' : 'Increase quantity'}
                 aria-label="Increase quantity"
               >
                 +

@@ -27,7 +27,7 @@ as $fn$
   );
 $fn$;
 revoke all on function public.is_store_admin() from public;
-grant execute on function public.is_store_admin() to anon, authenticated;
+grant execute on function public.is_store_admin() to anon, authenticated;\nrevoke all on function public.enforce_store_admin_limit() from public;
 
 create or replace function public.enforce_store_admin_limit()
 returns trigger
@@ -147,7 +147,7 @@ create policy "verified customers can submit reviews"
       from public.orders o
       cross join lateral jsonb_array_elements(o.items) as order_item(item)
       where o.user_id = (select auth.uid())
-        and order_item.item->>'id' = product_reviews.product_id::text
+        and o.status in ('paid', 'delivered')\n        and order_item.item->>'id' = product_reviews.product_id::text
     )
   );
 create policy "store admins moderate reviews"

@@ -63,6 +63,7 @@ export default function Admin() {
     saveInventoryVariant,
     reviews,
     moderateReview,
+    newsletterSubscribers,
     addProduct,
     updateProduct,
     deleteProduct,
@@ -215,6 +216,12 @@ export default function Admin() {
             Reviews ({reviews.filter(review => review.status === 'pending').length} pending)
           </button>
           <button
+            className={`admin-tab-pill ${activeTab === 'subscribers' ? 'active' : ''}`}
+            onClick={() => setActiveTab('subscribers')}
+          >
+            Newsletter ({newsletterSubscribers.length})
+          </button>
+          <button
             className={`admin-tab-pill ${activeTab === 'admins' ? 'active' : ''}`}
             onClick={() => setActiveTab('admins')}
           >
@@ -244,6 +251,9 @@ export default function Admin() {
         )}
         {activeTab === 'reviews' && (
           <AdminReviewsSection reviews={reviews} moderateReview={moderateReview} />
+        )}
+        {activeTab === 'subscribers' && (
+          <AdminSubscribersSection subscribers={newsletterSubscribers} />
         )}
 
         {activeTab === 'admins' && (
@@ -831,6 +841,40 @@ function AdminProductsSection({ products, addProduct, updateProduct, deleteProdu
           </tbody>
         </table>
       </div>
+    </section>
+  );
+}
+
+// -------------------------------------------------------------
+// Newsletter Subscriber List
+// -------------------------------------------------------------
+function AdminSubscribersSection({ subscribers }) {
+  return (
+    <section className="admin-products-section">
+      <div className="section-toolbar-row">
+        <div>
+          <h2>Newsletter subscribers</h2>
+          <p className="section-desc">Subscriber addresses are private and visible only to verified administrators. Campaign delivery is not connected yet.</p>
+        </div>
+        <strong>{subscribers.length} subscribers</strong>
+      </div>
+      {!subscribers.length ? (
+        <div className="admin-empty-state"><p>No newsletter subscribers yet.</p></div>
+      ) : (
+        <div className="admin-table-wrap">
+          <table className="admin-data-table">
+            <thead><tr><th>Email address</th><th>Subscribed</th></tr></thead>
+            <tbody>
+              {subscribers.map(subscriber => (
+                <tr key={subscriber.email}>
+                  <td>{subscriber.email}</td>
+                  <td>{new Date(subscriber.subscribed_at).toLocaleDateString()}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
     </section>
   );
 }

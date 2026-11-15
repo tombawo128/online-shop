@@ -4,6 +4,7 @@ import { useStore } from '../context/store.jsx';
 import { money } from '../config.js';
 import { Grid } from '../components/productcard.jsx';
 import { supabase } from '../lib/supabase.js';
+import { Helmet } from 'react-helmet-async';
 
 export default function Product() {
   const { id } = useParams();
@@ -149,6 +150,12 @@ export default function Product() {
 
   return (
     <main className="pdp-container">
+      <Helmet>
+        <title>{product.name} | Urban Thread</title>
+        <meta name="description" content={(product.description || `Shop ${product.name} at Urban Thread.`).slice(0, 155)} />
+        {product.images?.[0] && <meta property="og:image" content={product.images[0]} />}
+        <meta property="og:title" content={`${product.name} | Urban Thread`} />
+      </Helmet>
       {/* Breadcrumbs */}
       <nav className="pdp-breadcrumbs" aria-label="Breadcrumbs">
         <Link to="/">Home</Link>

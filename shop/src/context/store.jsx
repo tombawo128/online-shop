@@ -8,10 +8,6 @@ export const useStore = () => useContext(StoreContext);
 
 const LOCAL_STORAGE_KEY_CART = 'urban_thread_cart_v2';
 const LOCAL_STORAGE_KEY_WISHLIST = 'urban_thread_wishlist_v2';
-const LOCAL_STORAGE_KEY_USER = 'urban_thread_user_v2';
-const LOCAL_STORAGE_KEY_ORDERS = 'urban_thread_orders_v2';
-const LOCAL_STORAGE_KEY_ACCOUNTS = 'urban_thread_accounts_v3';
-const LOCAL_STORAGE_KEY_STORE_PRODUCTS = 'urban_thread_catalog_master_v1';
 
 // Maximum admin accounts permitted in the system
 export const MAX_ADMIN_ACCOUNTS = 2;
@@ -22,6 +18,7 @@ function normalizeProduct(row) {
     originalPrice: row.original_price ?? row.originalPrice ?? null,
     reviewCount: row.review_count ?? row.reviewCount ?? 0,
     isNew: row.is_new ?? row.isNew ?? false,
+    inventoryTracking: row.inventory_tracking ?? row.inventoryTracking ?? false,
     soldout: row.soldout || []
   };
 }
@@ -38,7 +35,8 @@ function productPayload(product) {
     colors: Array.isArray(product.colors) ? product.colors : [],
     soldout: Array.isArray(product.soldout) ? product.soldout : [],
     images: Array.isArray(product.images) ? product.images : [],
-    is_new: Boolean(product.isNew)
+    is_new: Boolean(product.isNew),
+    inventory_tracking: Boolean(product.inventoryTracking)
   };
 }
 
@@ -112,6 +110,7 @@ export function StoreProvider({ children }) {
 
   // --- Orders State ---
   const [orders, setOrders] = useState([]);
+  const [inventory, setInventory] = useState([]);
 
   // --- Auth State ---
   const [user, setUser] = useState(null);
@@ -192,6 +191,7 @@ export function StoreProvider({ children }) {
         setUser(null);
         setAccounts([]);
         setOrders([]);
+        setInventory([]);
         return;
       }
 
@@ -219,6 +219,15 @@ export function StoreProvider({ children }) {
         };
         setUser(current => current?.id === authUser.id ? resolvedUser : current);
         setAccounts(resolvedUser.role === 'admin' ? [resolvedUser] : []);
+        if (resolvedUser.role === 'admin') {
+          const { data: inventoryRows, error: inventoryError } = await supabase
+            .from('product_inventory')
+            .select('*')
+            .order('updated_at', { ascending: false });
+          if (!inventoryError) setInventory(inventoryRows || []);
+        } else {
+          setInventory([]);
+        }
 
         const { data: orderRows, error: ordersError } = await supabase
           .from('orders')
@@ -462,6 +471,48 @@ export function StoreProvider({ children }) {
     }
   };
 
+  const saveInventoryVariant = useCallback(async (productId, size, color, quantity) => {
+    try {
+      requireAdmin();
+      const safeQuantity = Math.floor(Number(quantity));
+      if (!productId || !size || !color || !Number.isInteger(safeQuantity) || safeQuantity < 0 || safeQuantity > 100000) {
+        throw new Error('Enter a valid variant and stock quantity between 0 and 100,000.');
+      }
+      const { data, error } = await supabase
+        .from('product_inventory')
+        .upsert({
+          product_id: productId,
+          size: String(size).trim(),
+          color: String(color).trim(),
+          quantity: safeQuantity,
+          updated_at: new Date().toISOString()
+        }, { onConflict: 'product_id,size,color' })
+        .select('*')
+        .single();
+      if (error) throw error;
+      setInventory(prev => [
+        data,
+        ...prev.filter(row => !(row.product_id === productId && row.size === size && row.color === color))
+      ]);
+      const product = products.find(item => item.id === productId);
+      if (product && !product.inventoryTracking) {
+        const { data: updatedProduct, error: productError } = await supabase
+          .from('products')
+          .update({ inventory_tracking: true })
+          .eq('id', productId)
+          .select('*')
+          .single();
+        if (productError) throw productError;
+        saveCatalog(products.map(item => item.id === productId ? normalizeProduct(updatedProduct) : item));
+      }
+      addToast('Variant inventory saved.', 'success');
+      return data;
+    } catch (error) {
+      addToast(error.message || 'Inventory could not be saved.', 'error');
+      throw error;
+    }
+  }, [products, saveCatalog, addToast, user]);
+
   const addProduct = useCallback(async (productData) => {
     try {
       requireAdmin();
@@ -538,6 +589,8 @@ export function StoreProvider({ children }) {
         updateProduct,
         deleteProduct,
         resetCatalog,
+        inventory,
+        saveInventoryVariant,
         fuse,
 
         // Cart

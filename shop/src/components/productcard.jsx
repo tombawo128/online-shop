@@ -9,7 +9,7 @@ export default function ProductCard({ p }) {
   const [hovered, setHovered] = useState(false);
   const wish = isWishlisted(p.id);
 
-  const displayImage = hovered && p.images && p.images[1] ? p.images[1] : (p.images?.[0] || '');
+  const displayImage = hovered && p.images && p.images[1] ? p.images[1] : (p.images?.[0] || 'https://images.unsplash.com/photo-1445205170230-053b83016050?auto=format&fit=crop&w=800&q=80');
 
   const handleQuickAdd = (e) => {
     e.preventDefault();

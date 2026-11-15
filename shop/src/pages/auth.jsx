@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useStore } from '../context/store.jsx';
 import { config } from '../config.js';
+import { Helmet } from 'react-helmet-async';
 
 export default function AuthPage({ defaultMode = 'signin' }) {
   const [searchParams] = useSearchParams();
@@ -119,6 +120,7 @@ export default function AuthPage({ defaultMode = 'signin' }) {
 
   return (
     <main className="auth-page-container">
+      <Helmet><title>Account Access | Urban Thread</title><meta name="robots" content="noindex,nofollow" /></Helmet>
       <div className="auth-split-wrapper">
         {/* Left Editorial Visual Showcase - Monochrome Minimalist */}
         <div className="auth-visual-column">

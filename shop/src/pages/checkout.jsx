@@ -45,7 +45,7 @@ export default function Checkout() {
     if (!form.phone.trim() || !/^\+?[0-9\s-]{7,18}$/.test(form.phone.trim())) {
       errs.phone = 'Please provide a valid phone number for delivery updates.';
     }
-    if (!form.state.trim()) {
+    if (form.email.trim() && !/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(form.email.trim())) {\n      errs.email = 'Please provide a valid email address.';\n    }\n    if (!form.state.trim()) {
       errs.state = 'Please specify your state or region.';
     }
     if (!form.location.trim() || form.location.trim().length < 5) {

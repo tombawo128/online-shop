@@ -7,7 +7,7 @@ on:
       - '.github/workflows/urban-threads-checks.yml'
   push:
     branches:
-      - master
+      - '**'
     paths:
       - 'shop/**'
       - '.github/workflows/urban-threads-checks.yml'

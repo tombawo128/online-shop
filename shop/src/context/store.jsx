@@ -52,11 +52,11 @@ export function StoreProvider({ children }) {
   const adminCount = adminAccounts.length;
   const canRegisterAdmin = false; // Admin roles are provisioned out-of-band by a trusted project owner.
 
-  // --- Real Live Products State (Synchronized across all users & pages) ---
+  // --- Live catalogue state ---
   const [products, setProducts] = useState(() => (supabase ? [] : seed));
   const [loading, setLoading] = useState(true);
 
-  // Sync catalog updates across all open tabs and pages in real time
+  // Keep the current catalogue in shared application state.
   const saveCatalog = useCallback((updatedList) => {
     setProducts(updatedList);
   }, []);
@@ -265,19 +265,27 @@ export function StoreProvider({ children }) {
 
   // --- Cart Actions ---
   const addToCart = useCallback((item, openDrawer = true) => {
+    const quantity = Math.floor(Number(item.qty) || 1);
+    if (!item.id || !item.size || !item.color || quantity < 1 || quantity > 20) {
+      addToast('Choose a valid product option and quantity.', 'error');
+      return;
+    }
     const key = `${item.id}-${item.size}-${item.color}`;
+    const existing = cart.find(entry => entry.key === key);
+    if ((existing?.qty || 0) + quantity > 20) {
+      addToast('Maximum quantity for one product variant is 20.', 'error');
+      return;
+    }
     setCart(prev => {
-      const existing = prev.find(x => x.key === key);
-      if (existing) {
-        return prev.map(x => x.key === key ? { ...x, qty: x.qty + item.qty } : x);
+      const current = prev.find(entry => entry.key === key);
+      if (current) {
+        return prev.map(entry => entry.key === key ? { ...entry, qty: entry.qty + quantity } : entry);
       }
-      return [...prev, { ...item, key }];
+      return [...prev, { ...item, qty: quantity, key }];
     });
     addToast(`Added "${item.name}" to bag`, 'success');
-    if (openDrawer) {
-      setIsCartOpen(true);
-    }
-  }, [addToast]);
+    if (openDrawer) setIsCartOpen(true);
+  }, [cart, addToast]);
 
   const setQty = useCallback((key, qty) => {
     const safeQty = Math.min(20, Math.floor(Number(qty) || 0));
@@ -454,7 +462,7 @@ export function StoreProvider({ children }) {
     if (payload.full_name.length < 2 || payload.full_name.length > 100) {
       throw new Error('Enter a valid name between 2 and 100 characters.');
     }
-    if (payload.phone && !/^\\+?[0-9\\s()-]{7,24}$/.test(payload.phone)) {
+    if (payload.phone && !/^\+?[0-9\s()-]{7,24}$/.test(payload.phone)) {
       throw new Error('Enter a valid phone number.');
     }
     if (payload.state.length > 100 || payload.location.length > 500) {
@@ -607,6 +615,8 @@ export function StoreProvider({ children }) {
     try {
       requireAdmin();
       const payload = productPayload({ ...products.find(product => product.id === id), ...updates });
+      const validationError = validateProductInput({ ...products.find(product => product.id === id), ...updates });
+      if (validationError) throw new Error(validationError);
       const { data, error } = await supabase.from('products').update(payload).eq('id', id).select('*').single();
       if (error) throw error;
       const savedProduct = normalizeProduct(data);

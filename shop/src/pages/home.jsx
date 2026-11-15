@@ -34,14 +34,19 @@ export default function Home() {
       return;
     }
     setNewsletterBusy(true);
-    const { error } = await supabase.from('newsletter_subscribers').insert({ email });
-    setNewsletterBusy(false);
-    if (error && error.code !== '23505') {
-      setNewsletterError(error.message || 'Subscription could not be saved. Please try again.');
-      return;
+    try {
+      const { error } = await supabase.from('newsletter_subscribers').insert({ email });
+      if (error && error.code !== '23505') {
+        setNewsletterError(error.message || 'Subscription could not be saved. Please try again.');
+        return;
+      }
+      setNewsletterSuccess(true);
+      addToast(error?.code === '23505' ? 'This email is already subscribed.' : 'You are now subscribed.', 'success');
+    } catch {
+      setNewsletterError('Subscription could not be saved. Please try again.');
+    } finally {
+      setNewsletterBusy(false);
     }
-    setNewsletterSuccess(true);
-    addToast(error?.code === '23505' ? 'This email is already subscribed.' : 'You are now subscribed.', 'success');
   };
 
   return (

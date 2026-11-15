@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useStore } from '../context/store.jsx';
 import { config, money } from '../config.js';
 import { Grid } from '../components/productcard.jsx';
+import { Helmet } from 'react-helmet-async';
 
 export default function AccountPage() {
   const { user, profile, saveCustomerProfile, logout, orders, wishlist, products, addToCart, toggleWishlist, addToast } = useStore();
@@ -68,6 +69,7 @@ export default function AccountPage() {
 
   return (
     <main className="account-page-wrap">
+      <Helmet><title>My Account | Urban Thread</title><meta name="robots" content="noindex,nofollow" /></Helmet>
       {/* Account Profile Hero Banner */}
       <section className="account-hero-banner">
         <div className="account-hero-content">

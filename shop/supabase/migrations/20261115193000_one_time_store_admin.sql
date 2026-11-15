@@ -9,6 +9,16 @@ create table if not exists public.store_admin_claim (
 alter table public.store_admin_claim enable row level security;
 revoke all on public.store_admin_claim from anon, authenticated;
 
+-- The project owner authorizes the intended email once through the Supabase SQL Editor.
+-- This prevents an arbitrary first customer from claiming store ownership.
+create table if not exists public.store_admin_setup (
+  singleton boolean primary key default true check (singleton),
+  authorized_email text not null check (authorized_email = lower(trim(authorized_email))),
+  configured_at timestamptz not null default now()
+);
+alter table public.store_admin_setup enable row level security;
+revoke all on public.store_admin_setup from anon, authenticated;
+
 do $$
 declare
   v_admin_count integer;
@@ -78,9 +88,22 @@ set search_path = public
 as $fn$
 declare
   v_user_id uuid := auth.uid();
+  v_authorized_email text;
 begin
   if v_user_id is null then
     raise exception 'Sign in before claiming administrator access';
+  end if;
+
+  select authorized_email into v_authorized_email
+  from public.store_admin_setup
+  where singleton = true;
+
+  if v_authorized_email is null then
+    raise exception 'Administrator setup has not been authorized by the store owner';
+  end if;
+
+  if lower(coalesce(auth.jwt()->>'email', '')) <> v_authorized_email then
+    raise exception 'This email address is not authorized to claim store administrator access';
   end if;
 
   perform pg_advisory_xact_lock(hashtext('urban_thread_admin_role_limit'));

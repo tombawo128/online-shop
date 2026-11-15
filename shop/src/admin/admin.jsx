@@ -58,7 +58,6 @@ export default function Admin() {
     products,
     orders,
     updateOrderStatus,
-    deleteOrder,
     inventory,
     saveInventoryVariant,
     reviews,
@@ -240,7 +239,7 @@ export default function Admin() {
         )}
 
         {activeTab === 'orders' && (
-          <AdminOrdersSection orders={orders} updateOrderStatus={updateOrderStatus} deleteOrder={deleteOrder} />
+          <AdminOrdersSection orders={orders} updateOrderStatus={updateOrderStatus} />
         )}
         {activeTab === 'inventory' && (
           <AdminInventorySection
@@ -1044,7 +1043,7 @@ function AdminReviewsSection({ reviews, moderateReview }) {
 // -------------------------------------------------------------
 // Admin Orders Management Section
 // -------------------------------------------------------------
-function AdminOrdersSection({ orders, updateOrderStatus, deleteOrder }) {
+function AdminOrdersSection({ orders, updateOrderStatus }) {
   const [filterStatus, setFilterStatus] = useState('all');
   const [ordersList, setOrdersList] = useState(orders);
   const [busyOrderId, setBusyOrderId] = useState('');
@@ -1065,18 +1064,7 @@ function AdminOrdersSection({ orders, updateOrderStatus, deleteOrder }) {
     }
   };
 
-  const handleDeleteOrder = async (orderId) => {
-    if (!window.confirm('Delete this order record permanently?')) return;
-    setBusyOrderId(orderId);
-    try {
-      await deleteOrder(orderId);
-      setOrdersList(prev => prev.filter(order => order.id !== orderId));
-    } catch (error) {
-      window.alert(error.message || 'Order could not be deleted.');
-    } finally {
-      setBusyOrderId('');
-    }
-  };
+
 
   return (
     <section className="admin-orders-view">

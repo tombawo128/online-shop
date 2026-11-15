@@ -299,17 +299,15 @@ function AdminTeamSection() {
         <div>
           <h2>Administrator access</h2>
           <p className="section-desc">
-            Administrator privileges are assigned through the protected Supabase user_roles table.
-            They cannot be created, elevated or removed from a public browser session.
+            Urban Threads has one permanent administrator slot. The first verified owner account claims it once; further public administrator registrations are blocked by the database.
           </p>
         </div>
       </div>
       <div className="admin-quota-banner banner-slots-full">
         <div className="quota-banner-body">
-          <strong>Protected administrator provisioning</strong>
+          <strong>Single administrator account</strong>
           <p>
-            Ask the project owner to provision or revoke an administrator role using the trusted
-            Supabase SQL editor. This prevents customers from granting themselves store access.
+            This account is the only administrator. Customer accounts cannot promote themselves, and the public setup cannot be repeated.
           </p>
         </div>
       </div>

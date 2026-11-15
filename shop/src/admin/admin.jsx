@@ -15,7 +15,8 @@ const blankProduct = {
   colors: 'black, white',
   soldout: '',
   images: [],
-  isNew: true
+  isNew: true,
+  inventoryTracking: false
 };
 
 const parseCommaList = (str) => {
@@ -329,7 +330,8 @@ function AdminProductsSection({ products, addProduct, updateProduct, deleteProdu
       colors: Array.isArray(p.colors) ? p.colors.join(', ') : (p.colors || ''),
       soldout: Array.isArray(p.soldout) ? p.soldout.join(', ') : (p.soldout || ''),
       images: existingImages,
-      isNew: Boolean(p.isNew)
+      isNew: Boolean(p.isNew),
+      inventoryTracking: Boolean(p.inventoryTracking)
     });
     setIsFormOpen(true);
     window.scrollTo({ top: 0, behavior: 'smooth' });

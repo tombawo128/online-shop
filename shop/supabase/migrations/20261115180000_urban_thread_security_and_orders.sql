@@ -47,6 +47,22 @@ alter table public.products
   add column if not exists review_count integer not null default 0,
   add column if not exists is_new boolean not null default false;
 
+create table if not exists public.customer_profiles (
+  user_id uuid primary key references auth.users(id) on delete cascade,
+  full_name text not null check (length(trim(full_name)) between 1 and 100),
+  phone text,
+  state text,
+  location text,
+  updated_at timestamptz not null default now()
+);
+alter table public.customer_profiles enable row level security;
+drop policy if exists "customers manage own profile" on public.customer_profiles;
+create policy "customers manage own profile"
+  on public.customer_profiles for all to authenticated
+  using (user_id = (select auth.uid()))
+  with check (user_id = (select auth.uid()));
+grant select, insert, update on public.customer_profiles to authenticated;
+
 create table if not exists public.product_inventory (
   id uuid primary key default gen_random_uuid(),
   product_id uuid not null references public.products(id) on delete cascade,

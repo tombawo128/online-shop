@@ -4,7 +4,7 @@ import { useStore } from '../context/store.jsx';
 import { config, money } from '../config.js';
 
 export default function Checkout() {
-  const { cart, total, subtotal, discountAmount, discountCode, shippingFee, clearCart, saveOrder, user } = useStore();
+  const { cart, total, subtotal, discountAmount, discountCode, shippingFee, clearCart, saveOrder, user, profile } = useStore();
 
   const [form, setForm] = useState({
     name: '',
@@ -20,26 +20,15 @@ export default function Checkout() {
 
   // Pre-fill user profile if available
   useEffect(() => {
-    try {
-      const savedProfile = JSON.parse(localStorage.getItem('urban_shipping_profile')) || {};
-      setForm(prev => ({
-        ...prev,
-        name: user?.name || savedProfile.name || '',
-        email: user?.email || '',
-        phone: savedProfile.phone || '',
-        state: savedProfile.state || '',
-        location: savedProfile.location || ''
-      }));
-    } catch {
-      if (user) {
-        setForm(prev => ({
-          ...prev,
-          name: user.name || '',
-          email: user.email || ''
-        }));
-      }
-    }
-  }, [user]);
+    setForm(prev => ({
+      ...prev,
+      name: profile?.full_name || user?.name || '',
+      email: user?.email || '',
+      phone: profile?.phone || '',
+      state: profile?.state || '',
+      location: profile?.location || ''
+    }));
+  }, [user, profile]);
 
   const handleChange = (field) => (e) => {
     setForm({ ...form, [field]: e.target.value });
@@ -53,8 +42,11 @@ export default function Checkout() {
     if (!form.name.trim() || form.name.trim().length < 2) {
       errs.name = 'Please provide your full name.';
     }
-    if (!form.phone.trim() || !/^\+?[0-9\s-]{7,18}$/.test(form.phone.trim())) {
+    if (!form.phone.trim() || !/^\+?[0-9\s()-]{7,24}$/.test(form.phone.trim())) {
       errs.phone = 'Please provide a valid phone number for delivery updates.';
+    }
+    if (form.email.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email.trim())) {
+      errs.email = 'Please provide a valid email address.';
     }
     if (!form.state.trim()) {
       errs.state = 'Please specify your state or region.';
@@ -98,34 +90,26 @@ export default function Checkout() {
     try {
       const created = await saveOrder(orderData);
 
-      // Save shipping profile for future convenience
-      try {
-        localStorage.setItem('urban_shipping_profile', JSON.stringify({
-          name: form.name.trim(),
-          phone: form.phone.trim(),
-          state: form.state.trim(),
-          location: form.location.trim()
-        }));
-      } catch (err) {
-        console.warn(err);
-      }
+
 
       // Format WhatsApp dispatch message
-      const itemsText = orderData.items
+      const confirmedTotal = Number(created.total);
+      const confirmedItems = Array.isArray(created.items) ? created.items : [];
+      const itemsText = confirmedItems
         .map(i => `• ${i.qty}x ${i.name} [Size: ${i.size}, Color: ${i.color}] - ${money(i.price * i.qty)}`)
         .join('\n');
 
-      const waMsg = `Hello Urban Thread! 🛍️\nI have placed an order.\n\nOrder Ref: #${created.id}\nCustomer: ${orderData.customer_name}\nPhone: ${orderData.phone}\nDelivery Address: ${orderData.location}, ${orderData.state}\n\nItems:\n${itemsText}\n\nTotal: ${money(total)}\n\nPlease send payment details to complete my order. Thank you!`;
+      const waMsg = `Hello Urban Thread! 🛍️\nI have placed an order.\n\nOrder Ref: #${created.id}\nCustomer: ${orderData.customer_name}\nPhone: ${orderData.phone}\nDelivery Address: ${orderData.location}, ${orderData.state}\n\nItems:\n${itemsText}\n\nTotal: ${money(confirmedTotal)}\n\nPlease send payment details to complete my order. Thank you!`;
 
       setCompletedOrder({
         order: created,
         waMsg,
-        waUrl: `https://wa.me/${config.whatsapp}?text=${encodeURIComponent(waMsg)}`
+        waUrl: config.whatsapp ? `https://wa.me/${config.whatsapp}?text=${encodeURIComponent(waMsg)}` : null
       });
 
       clearCart();
     } catch (err) {
-      setErrors({ form: 'An issue occurred while recording your order. Please try again.' });
+      setErrors({ form: err.message || 'An issue occurred while recording your order. Please try again.' });
     } finally {
       setBusy(false);
     }
@@ -138,29 +122,35 @@ export default function Checkout() {
       <main className="checkout-success-container">
         <div className="order-receipt-card">
           <div className="receipt-badge-icon">✓</div>
-          <span className="receipt-ref-pill">ORDER #{order.id} CONFIRMED</span>
+          <span className="receipt-ref-pill">ORDER #{order.id} RECEIVED</span>
           <h1>Thank you, {order.customer_name}!</h1>
           <p className="receipt-sub">
-            Your wardrobe request has been reserved. To complete payment and coordinate express delivery, connect directly with our studio concierge on WhatsApp.
+            {waUrl ? 'Your order has been recorded. Contact our studio concierge on WhatsApp to confirm availability and arrange delivery.' : 'Your order has been recorded, but the store WhatsApp contact is not configured. Contact the store owner with your order reference to arrange delivery.'}
           </p>
 
-          <div className="whatsapp-action-box">
-            <div className="wa-box-header">
-              <span className="wa-icon">💬</span>
-              <div>
-                <strong>Instant Studio Concierge</strong>
-                <p>Seller WhatsApp: +{config.whatsapp}</p>
+          {waUrl ? (
+            <div className="whatsapp-action-box">
+              <div className="wa-box-header">
+                <span className="wa-icon">💬</span>
+                <div>
+                  <strong>Studio Concierge</strong>
+                  <p>Seller WhatsApp: +{config.whatsapp}</p>
+                </div>
               </div>
+              <a
+                href={waUrl}
+                target="_blank"
+                rel="noreferrer"
+                className="btn btn-whatsapp btn-block btn-lg"
+              >
+                Open WhatsApp & Send Order Details →
+              </a>
             </div>
-            <a
-              href={waUrl}
-              target="_blank"
-              rel="noreferrer"
-              className="btn btn-whatsapp btn-block btn-lg"
-            >
-              Open WhatsApp & Send Order Details →
-            </a>
-          </div>
+          ) : (
+            <div className="checkout-alert-error" role="status">
+              Store contact details have not been configured yet. Keep your order reference for the store owner.
+            </div>
+          )}
 
           <div className="receipt-summary-box">
             <h3>Order Overview</h3>

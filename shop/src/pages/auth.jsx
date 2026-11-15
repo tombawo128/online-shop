@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useStore } from '../context/store.jsx';
 import { config } from '../config.js';
+import { Helmet } from 'react-helmet-async';
 
 export default function AuthPage({ defaultMode = 'signin' }) {
   const [searchParams] = useSearchParams();
@@ -31,7 +32,7 @@ export default function AuthPage({ defaultMode = 'signin' }) {
 
   // If already logged in
   useEffect(() => {
-    if (user) {
+    if (user?.roleResolved) {
       if (user.role === 'admin') {
         nav('/admin');
       } else {
@@ -56,8 +57,8 @@ export default function AuthPage({ defaultMode = 'signin' }) {
       setFormError('Please enter a valid email address.');
       return;
     }
-    if (password.length < 4) {
-      setFormError('Password must contain at least 4 characters.');
+    if (password.length < 10) {
+      setFormError('Password must contain at least 10 characters.');
       return;
     }
 
@@ -103,6 +104,9 @@ export default function AuthPage({ defaultMode = 'signin' }) {
         const res = await signup(name, cleanEmail, password, 'customer');
         if (!res.success) {
           setFormError(res.error || 'Registration failed.');
+        } else if (res.requiresEmailConfirmation) {
+          setMode('signin');
+          setFormError('Your account has been created. Check your email for the confirmation link before signing in.');
         } else {
           nav(redirectPath);
         }
@@ -116,6 +120,7 @@ export default function AuthPage({ defaultMode = 'signin' }) {
 
   return (
     <main className="auth-page-container">
+      <Helmet><title>Account Access | Urban Thread</title><meta name="robots" content="noindex,nofollow" /></Helmet>
       <div className="auth-split-wrapper">
         {/* Left Editorial Visual Showcase - Monochrome Minimalist */}
         <div className="auth-visual-column">

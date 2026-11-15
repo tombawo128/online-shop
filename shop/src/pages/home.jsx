@@ -2,12 +2,17 @@ import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useStore } from '../context/store.jsx';
 import { Grid } from '../components/productcard.jsx';
+import { supabase } from '../lib/supabase.js';
+import { Helmet } from 'react-helmet-async';
 
 export default function Home() {
   const { products, loading, addToast } = useStore();
   const [filterTab, setFilterTab] = useState('all');
   const [newsletterEmail, setNewsletterEmail] = useState('');
   const [newsletterSuccess, setNewsletterSuccess] = useState(false);
+  const [newsletterBusy, setNewsletterBusy] = useState(false);
+  const [newsletterConsent, setNewsletterConsent] = useState(false);
+  const [newsletterError, setNewsletterError] = useState('');
 
   const displayedProducts = products
     .filter(p => {
@@ -17,18 +22,44 @@ export default function Home() {
     })
     .slice(0, 8);
 
-  const handleNewsletter = (e) => {
+  const handleNewsletter = async (e) => {
     e.preventDefault();
-    if (!newsletterEmail.trim() || !newsletterEmail.includes('@')) {
-      addToast('Please enter a valid email address', 'error');
+    setNewsletterError('');
+    if (!newsletterConsent) {
+      setNewsletterError('Please confirm that you agree to receive future store updates.');
       return;
     }
-    setNewsletterSuccess(true);
-    addToast('Welcome! Your discount code is URBAN15', 'success');
+    const email = newsletterEmail.trim().toLowerCase();
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      setNewsletterError('Enter a valid email address.');
+      return;
+    }
+    if (!supabase) {
+      setNewsletterError('Newsletter registration is temporarily unavailable.');
+      return;
+    }
+    setNewsletterBusy(true);
+    try {
+      const { error } = await supabase.from('newsletter_subscribers').insert({ email });
+      if (error && error.code !== '23505') {
+        setNewsletterError(error.message || 'Subscription could not be saved. Please try again.');
+        return;
+      }
+      setNewsletterSuccess(true);
+      addToast(error?.code === '23505' ? 'This email is already subscribed.' : 'You are now subscribed.', 'success');
+    } catch {
+      setNewsletterError('Subscription could not be saved. Please try again.');
+    } finally {
+      setNewsletterBusy(false);
+    }
   };
 
   return (
     <main className="home-page">
+      <Helmet>
+        <title>Urban Thread | Contemporary Fashion for Women & Men</title>
+        <meta name="description" content="Explore contemporary clothing, everyday essentials and new arrivals for women and men at Urban Thread." />
+      </Helmet>
       {/* Clean Hero Section */}
       <section className="hero-editorial">
         <div className="hero-backdrop">
@@ -176,18 +207,18 @@ export default function Home() {
       {/* Newsletter Discount Banner */}
       <section className="newsletter-banner">
         <div className="newsletter-box">
-          <span className="newsletter-tag">SPECIAL OFFER</span>
-          <h2>Get 15% Off Your Order</h2>
+          <span className="newsletter-tag">THE URBAN THREAD EDIT</span>
+          <h2>Stay in the Loop</h2>
           <p>
-            Sign up with your email to receive an instant 15% discount code for your next order.
+            Join the subscriber list for future collection announcements. Email campaigns will be enabled when a mailing service is connected.
           </p>
 
           {newsletterSuccess ? (
             <div className="newsletter-success-box">
               <span className="check-circle">✓</span>
               <div>
-                <strong>You're subscribed!</strong>
-                <p>Use coupon code <strong>URBAN15</strong> at checkout for 15% off.</p>
+                <strong>You’re subscribed!</strong>
+                <p>Your email has been saved to the subscriber list. Campaign emails are not yet configured.</p>
               </div>
             </div>
           ) : (
@@ -198,10 +229,22 @@ export default function Home() {
                 value={newsletterEmail}
                 onChange={e => setNewsletterEmail(e.target.value)}
                 required
+                maxLength={254}
+                autoComplete="email"
               />
-              <button type="submit" className="btn btn-primary">
-                Get 15% Off
+              <label className="newsletter-consent">
+                <input
+                  type="checkbox"
+                  checked={newsletterConsent}
+                  onChange={event => setNewsletterConsent(event.target.checked)}
+                  required
+                />
+                <span>I agree to receive future Urban Thread store updates by email.</span>
+              </label>
+              <button type="submit" className="btn btn-primary" disabled={newsletterBusy || !supabase || !newsletterConsent}>
+                {newsletterBusy ? 'Subscribing…' : 'Subscribe'}
               </button>
+              {newsletterError && <p role="alert" className="newsletter-error">{newsletterError}</p>}
             </form>
           )}
         </div>

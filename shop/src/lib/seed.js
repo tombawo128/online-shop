@@ -12,8 +12,6 @@ export const seed = [
     sizes: S,
     colors: ['oatmeal', 'noir', 'sage'],
     soldout: ['XS'],
-    rating: 4.9,
-    reviewCount: 38,
     isNew: true,
     description: 'Crafted from 100% natural airy French flax linen. Features delicate mother-of-pearl buttons, a flattering cinched waist tie, and hidden side seam pockets for effortless summer refinement.',
     images: [
@@ -33,8 +31,6 @@ export const seed = [
     sizes: S,
     colors: ['ivory', 'black', 'rose'],
     soldout: [],
-    rating: 4.8,
-    reviewCount: 24,
     isNew: false,
     description: 'A luxurious drape in breathable mulberry silk and organic cotton blend. Designed with a clean Mandarin collar, soft dropped shoulders, and subtle cuff gathers for a polished silhouette.',
     images: [
@@ -53,8 +49,6 @@ export const seed = [
     sizes: S,
     colors: ['slate', 'camel', 'midnight'],
     soldout: ['XL'],
-    rating: 5.0,
-    reviewCount: 42,
     isNew: true,
     description: 'Impeccably tailored wide-leg trousers cut in structured mid-weight drape fabric. Features front double pleats, high-rise contoured waistband, and welt back pockets.',
     images: [
@@ -73,8 +67,6 @@ export const seed = [
     sizes: S,
     colors: ['beige', 'charcoal', 'taupe'],
     soldout: [],
-    rating: 4.9,
-    reviewCount: 19,
     isNew: false,
     description: 'Ultra-soft spun Mongolian cashmere blended with extra-fine merino wool. Rib-knit trims, tortoiseshell buttons, and a relaxed boxy cut make it an indispensable layering piece.',
     images: [
@@ -93,8 +85,6 @@ export const seed = [
     sizes: S,
     colors: ['champagne', 'emerald', 'black'],
     soldout: ['XS'],
-    rating: 4.7,
-    reviewCount: 31,
     isNew: false,
     description: 'Sunburst accordion pleats caught in fluid satin with a luminous pearlescent sheen. Features a hidden elastic comfort waistband that flows gracefully with every stride.',
     images: [
@@ -113,8 +103,6 @@ export const seed = [
     sizes: N,
     colors: ['black', 'cognac'],
     soldout: ['38'],
-    rating: 5.0,
-    reviewCount: 52,
     isNew: true,
     description: 'Handcrafted full-grain Tuscan leather Chelsea boot with elasticated goring and reinforced pull tabs. Features stacked leather bevel heel and cushioned arch-support insole.',
     images: [
@@ -133,8 +121,6 @@ export const seed = [
     sizes: S,
     colors: ['camel', 'black', 'houndstooth'],
     soldout: ['L'],
-    rating: 4.9,
-    reviewCount: 29,
     isNew: true,
     description: 'A contemporary take on the timeless belted trench. Heavyweight virgin wool blend, storm flap, horn buckles, and satin lining engineered for wind resistance and warm sophistication.',
     images: [
@@ -153,8 +139,6 @@ export const seed = [
     sizes: S,
     colors: ['sky-blue', 'white', 'stripes'],
     soldout: [],
-    rating: 4.8,
-    reviewCount: 46,
     isNew: false,
     description: 'Woven from two-ply 80s organic cotton oxford cloth. Crisp button-down collar, box pleat with locker loop, and durable natural shell buttons. Designed to soften gracefully with each wash.',
     images: [
@@ -173,8 +157,6 @@ export const seed = [
     sizes: S,
     colors: ['sand', 'charcoal', 'olive'],
     soldout: ['XL'],
-    rating: 4.9,
-    reviewCount: 37,
     isNew: false,
     description: 'Precision-tailored from combed cotton twill with 2% elastane for seamless flex. Clean front, coin pocket, and vintage wash for a lived-in softness from day one.',
     images: [
@@ -193,8 +175,6 @@ export const seed = [
     sizes: S,
     colors: ['chalk-white', 'faded-black', 'heather'],
     soldout: [],
-    rating: 4.9,
-    reviewCount: 65,
     isNew: false,
     description: '240 GSM heavy jersey spun from 100% GOTS-certified combed organic cotton. Preshrunk with a tight 1x1 rib collar that holds shape forever. An essential foundational tee.',
     images: [
@@ -213,8 +193,6 @@ export const seed = [
     sizes: S,
     colors: ['indigo', 'washed-black'],
     soldout: [],
-    rating: 4.9,
-    reviewCount: 28,
     isNew: true,
     description: '13.5oz Japanese shuttle-loom selvedge denim. Antique brass shank buttons, side waist adjuster tabs, and red-line selvedge visible on interior placket. Destined to patina beautifully.',
     images: [
@@ -233,8 +211,6 @@ export const seed = [
     sizes: S,
     colors: ['charcoal', 'camel', 'black'],
     soldout: ['XS'],
-    rating: 5.0,
-    reviewCount: 22,
     isNew: true,
     description: 'Understated single-breasted overcoat tailored in double-faced Italian wool blend. Notch lapels, concealed horn button closure, deep interior slip pockets, and a clean back vent.',
     images: [
@@ -253,8 +229,6 @@ export const seed = [
     sizes: N,
     colors: ['white', 'black-sole'],
     soldout: [],
-    rating: 4.8,
-    reviewCount: 58,
     isNew: false,
     description: 'Buttery smooth calfskin leather upper lined with glove leather. Stitched rubber cupsole with memory foam insole for all-day comfort. Clean, logo-free Scandinavian minimalism.',
     images: [
@@ -273,8 +247,6 @@ export const seed = [
     sizes: S,
     colors: ['navy', 'charcoal', 'olive'],
     soldout: ['XL'],
-    rating: 4.9,
-    reviewCount: 16,
     isNew: true,
     description: 'Spun from 100% extra-fine 19.5 micron Australian merino wool. Naturally thermo-regulating and anti-wrinkle. Clean 3-button placket with ribbed hem and cuffs.',
     images: [

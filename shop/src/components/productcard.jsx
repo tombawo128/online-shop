@@ -1,20 +1,29 @@
 import { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { money } from '../config.js';
 import { useStore } from '../context/store.jsx';
 
 export default function ProductCard({ p }) {
-  const { toggleWishlist, isWishlisted, addToCart } = useStore();
+  const { toggleWishlist, isWishlisted, addToCart, addToast } = useStore();
+  const navigate = useNavigate();
   const [hovered, setHovered] = useState(false);
   const wish = isWishlisted(p.id);
 
-  const displayImage = hovered && p.images && p.images[1] ? p.images[1] : (p.images?.[0] || '');
+  const displayImage = hovered && p.images && p.images[1] ? p.images[1] : (p.images?.[0] || 'https://images.unsplash.com/photo-1445205170230-053b83016050?auto=format&fit=crop&w=800&q=80');
 
   const handleQuickAdd = (e) => {
     e.preventDefault();
     e.stopPropagation();
-    const size = p.sizes?.[0] || 'M';
-    const color = p.colors?.[0] || 'Standard';
+    if (p.inventoryTracking) {
+      navigate(`/product/${p.id}`);
+      return;
+    }
+    const size = p.sizes?.find(value => !p.soldout?.includes(value)) || '';
+    const color = p.colors?.[0] || '';
+    if (!size || !color) {
+      addToast('This product is currently unavailable.', 'error');
+      return;
+    }
     addToCart({
       id: p.id,
       name: p.name,
@@ -71,7 +80,7 @@ export default function ProductCard({ p }) {
         <button
           className="quick-add-overlay-btn"
           onClick={handleQuickAdd}
-          aria-label={`Quick add ${p.name}`}
+          aria-label={p.inventoryTracking ? `View stock options for ${p.name}` : `Quick add ${p.name}`}
         >
           + Quick Add
         </button>
@@ -80,9 +89,9 @@ export default function ProductCard({ p }) {
       <div className="card-info">
         <div className="card-meta">
           <span className="card-cat">{p.category}</span>
-          {p.rating && (
+          {Number(p.reviewCount) > 0 && Number(p.rating) > 0 && (
             <span className="card-rating">
-              ★ {Number(p.rating).toFixed(1)} <span className="rating-count">({p.reviewCount || 12})</span>
+              ★ {Number(p.rating).toFixed(1)} <span className="rating-count">({p.reviewCount})</span>
             </span>
           )}
         </div>

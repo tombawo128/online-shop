@@ -21,7 +21,7 @@ const NotFound = lazy(() => import('./pages/notfound.jsx'));
 function ScrollToTop() {
   const { pathname } = useLocation();
   useEffect(() => {
-    window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
+    window.scrollTo(0, 0);
   }, [pathname]);
   return null;
 }
@@ -29,8 +29,7 @@ function ScrollToTop() {
 export default function App() {
   const location = useLocation();
   const isAdmin = location.pathname.startsWith('/admin') ||
-                  location.pathname.startsWith(config.adminPath) ||
-                  location.pathname.startsWith('/manage-change-this');
+    (config.adminPath !== '/admin' && location.pathname.startsWith(config.adminPath));
 
   return (
     <div className="site-wrapper">
@@ -39,7 +38,7 @@ export default function App() {
       <CartDrawer />
       <ToastContainer />
 
-      <main className="main-content-flow">
+      <div className="main-content-flow">
         <Suspense fallback={
           <div className="app-page-loading">
             <div className="loading-spinner" />
@@ -57,12 +56,11 @@ export default function App() {
             <Route path="/signup" element={<AuthPage defaultMode="signup" />} />
             <Route path="/account" element={<AccountPage />} />
             <Route path="/admin" element={<Admin />} />
-            <Route path={config.adminPath} element={<Admin />} />
-            <Route path="/manage-change-this" element={<Admin />} />
+            {config.adminPath !== '/admin' && <Route path={config.adminPath} element={<Admin />} />}
             <Route path="*" element={<NotFound />} />
           </Routes>
         </Suspense>
-      </main>
+      </div>
 
       {!isAdmin && <Footer />}
     </div>

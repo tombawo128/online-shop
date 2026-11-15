@@ -54,6 +54,7 @@ async function processImageFile(file) {
 export default function Admin() {
   const {
     user,
+    claimFirstAdmin,
     logout,
     products,
     orders,
@@ -72,6 +73,8 @@ export default function Admin() {
 
   const [activeTab, setActiveTab] = useState('products'); // 'products', 'orders', 'admins'
   const [session, setSession] = useState(undefined);
+  const [claimBusy, setClaimBusy] = useState(false);
+  const [claimError, setClaimError] = useState('');
 
   // Set page title & robots tag
   useEffect(() => {
@@ -108,18 +111,41 @@ export default function Admin() {
   // Route guard: Ordinary users cannot view or access the admin page
   useEffect(() => {
     if (session !== undefined && (!user || user.roleResolved)) {
-      const isAdmin = user?.role === 'admin';
-      if (!isAdmin) {
-        nav('/login?redirect=/admin', { replace: true });
-      }
+      if (!user) nav('/login?redirect=/admin', { replace: true });
     }
   }, [session, user, nav]);
 
   // If loading session or unauthorized, do not render admin panel
-  if (session === undefined || !user || !user.roleResolved || user.role !== 'admin') {
+  if (session === undefined || !user || !user.roleResolved) {
     return (
       <main className="admin-loading-screen">
-        <p>Verifying administrative credentials…</p>
+        <p>Verifying your account…</p>
+      </main>
+    );
+  }
+
+  if (user.role !== 'admin') {
+    const handleClaimAdmin = async () => {
+      setClaimBusy(true);
+      setClaimError('');
+      const result = await claimFirstAdmin();
+      if (!result.success) setClaimError(result.error);
+      setClaimBusy(false);
+    };
+    return (
+      <main className="admin-loading-screen">
+        <section className="admin-team-section" style={{ maxWidth: 620, margin: '48px auto', padding: 32 }}>
+          <span className="section-eyebrow">ONE-TIME STORE SETUP</span>
+          <h1>Set up the Urban Threads administrator</h1>
+          <p>Only the first verified account can claim administrator access. This setup is enforced by the database and cannot be repeated from the website.</p>
+          <p>Signed in as <strong>{user.email}</strong></p>
+          {claimError && <p role="alert" className="field-err">{claimError}</p>}
+          <button type="button" className="btn btn-primary" onClick={handleClaimAdmin} disabled={claimBusy || !isSupabaseConfigured}>
+            {claimBusy ? 'Securing administrator access…' : 'Create the one administrator account'}
+          </button>
+          {!isSupabaseConfigured && <p role="alert">The live Supabase connection is not configured. Administrator setup is disabled.</p>}
+          <p><Link to="/">Return to Urban Threads</Link> · <button type="button" className="link-switch" onClick={logout}>Sign out</button></p>
+        </section>
       </main>
     );
   }

@@ -1,7 +1,6 @@
 import { createContext, useContext, useEffect, useMemo, useState, useCallback } from 'react';
 import Fuse from 'fuse.js';
 import { supabase, isSupabaseConfigured } from '../lib/supabase.js';
-import { seed } from '../lib/seed.js';
 import { validateOrderItems, validateProductInput } from '../lib/validation.js';
 
 const StoreContext = createContext(null);
@@ -11,7 +10,7 @@ const LOCAL_STORAGE_KEY_CART = 'urban_thread_cart_v2';
 const LOCAL_STORAGE_KEY_WISHLIST = 'urban_thread_wishlist_v2';
 
 // Maximum admin accounts permitted in the system
-export const MAX_ADMIN_ACCOUNTS = 2;
+export const MAX_ADMIN_ACCOUNTS = 1;
 
 function normalizeProduct(row) {
   return {
@@ -50,10 +49,11 @@ export function StoreProvider({ children }) {
   // Derived Admin Accounts & Quota Helpers
   const adminAccounts = useMemo(() => accounts.filter(a => a.role === 'admin'), [accounts]);
   const adminCount = adminAccounts.length;
-  const canRegisterAdmin = false; // Admin roles are provisioned out-of-band by a trusted project owner.
+  const canRegisterAdmin = false; // The single administrator is claimed through a database-enforced one-time setup.
 
   // --- Live catalogue state ---
-  const [products, setProducts] = useState(() => (supabase ? [] : seed));
+  const [products, setProducts] = useState([]);
+  const [catalogueError, setCatalogueError] = useState('');
   const [loading, setLoading] = useState(true);
 
   // Keep the current catalogue in shared application state.
@@ -111,7 +111,8 @@ export function StoreProvider({ children }) {
   // --- Load the authoritative catalogue from Supabase ---
   const loadProducts = useCallback(async () => {
     if (!supabase) {
-      setProducts(seed);
+      setProducts([]);
+      setCatalogueError('The live catalogue is unavailable because the Supabase store connection is not configured.');
       setLoading(false);
       return;
     }
@@ -123,8 +124,11 @@ export function StoreProvider({ children }) {
         .order('created_at', { ascending: false });
       if (error) throw error;
       saveCatalog((data || []).map(normalizeProduct));
+      setCatalogueError('');
     } catch (error) {
       console.error('Could not load the product catalogue:', error);
+      setProducts([]);
+      setCatalogueError('The live catalogue could not be loaded. Check the store database connection and access policies.');
       addToast('The store catalogue could not be loaded. Please refresh and try again.', 'error');
     } finally {
       setLoading(false);
@@ -424,7 +428,46 @@ export function StoreProvider({ children }) {
     return { success: true, user: data?.session ? data.user : null, requiresEmailConfirmation: !data?.session };
   }, [addToast]);
 
-  // Administrator privileges are provisioned by a trusted project owner in Supabase.
+  // Claim the only administrator slot. The database function is atomic and can succeed once only.
+  const claimFirstAdmin = useCallback(async () => {
+    if (!supabase || !user?.id || !user?.roleResolved) {
+      return { success: false, error: 'Create and sign in to your customer account before starting administrator setup.' };
+    }
+    if (user.role === 'admin') return { success: true, user };
+    const { error } = await supabase.rpc('claim_first_store_admin');
+    if (error) {
+      const message = error.message || 'The administrator setup could not be completed.';
+      addToast(message, 'error');
+      return { success: false, error: message };
+    }
+    const { data: roleRecord, error: roleError } = await supabase
+      .from('user_roles')
+      .select('role')
+      .eq('user_id', user.id)
+      .maybeSingle();
+    if (roleError || roleRecord?.role !== 'admin') {
+      const message = 'The database did not confirm administrator access. Sign out and sign in again.';
+      addToast(message, 'error');
+      return { success: false, error: message };
+    }
+    const adminUser = { ...user, role: 'admin', roleResolved: true };
+    setUser(adminUser);
+    setAccounts([adminUser]);
+    const [inventoryResult, reviewResult, subscriberResult, orderResult] = await Promise.all([
+      supabase.from('product_inventory').select('*').order('updated_at', { ascending: false }),
+      supabase.from('product_reviews').select('id,product_id,user_id,rating,title,body,status,created_at').order('created_at', { ascending: false }),
+      supabase.from('newsletter_subscribers').select('email,subscribed_at').order('subscribed_at', { ascending: false }),
+      supabase.from('orders').select('*').order('created_at', { ascending: false })
+    ]);
+    if (!inventoryResult.error) setInventory(inventoryResult.data || []);
+    if (!reviewResult.error) setReviews(reviewResult.data || []);
+    if (!subscriberResult.error) setNewsletterSubscribers(subscriberResult.data || []);
+    if (!orderResult.error) setOrders(orderResult.data || []);
+    addToast('Your one-time Urban Threads administrator account is active.', 'success');
+    return { success: true, user: adminUser };
+  }, [user, addToast]);
+
+  // Administrator privileges cannot be self-assigned after the one-time claim is consumed.
   const deleteAdminAccount = useCallback(() => ({
     success: false,
     error: 'Administrator roles must be managed by a trusted database owner.'
@@ -659,6 +702,7 @@ export function StoreProvider({ children }) {
         // Products
         products,
         loading,
+        catalogueError,
         loadProducts,
         addProduct,
         updateProduct,
@@ -713,6 +757,7 @@ export function StoreProvider({ children }) {
         adminCount,
         maxAdmins: MAX_ADMIN_ACCOUNTS,
         canRegisterAdmin,
+        claimFirstAdmin,
         deleteAdminAccount,
         isSupabaseConfigured,
         login,

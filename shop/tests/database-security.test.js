@@ -8,7 +8,7 @@ test('migration uses balanced PostgreSQL function delimiters', () => {
   const tags = migration.match(/\$fn\$/g) || [];
   assert.equal(tags.length % 2, 0);
   assert.ok(tags.length >= 10);
-  assert.equal(migration.includes('\\\\n'), false);
+  assert.equal(migration.includes('\\n'), false);
 });
 
 test('order inserts are only available through the validated database function', () => {

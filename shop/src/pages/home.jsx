@@ -40,7 +40,7 @@ export default function Home() {
     }
     setNewsletterBusy(true);
     try {
-      const { error } = await supabase.from('newsletter_subscribers').insert({ email, consented_at: new Date().toISOString() });
+      const { error } = await supabase.from('newsletter_subscribers').insert({ email });
       if (error && error.code !== '23505') {
         setNewsletterError(error.message || 'Subscription could not be saved. Please try again.');
         return;

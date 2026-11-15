@@ -4,7 +4,7 @@ import { money } from '../config.js';
 import { useStore } from '../context/store.jsx';
 
 export default function ProductCard({ p }) {
-  const { toggleWishlist, isWishlisted, addToCart } = useStore();
+  const { toggleWishlist, isWishlisted, addToCart, addToast } = useStore();
   const [hovered, setHovered] = useState(false);
   const wish = isWishlisted(p.id);
 
@@ -13,8 +13,16 @@ export default function ProductCard({ p }) {
   const handleQuickAdd = (e) => {
     e.preventDefault();
     e.stopPropagation();
-    const size = p.sizes?.[0] || 'M';
-    const color = p.colors?.[0] || 'Standard';
+    if (p.inventoryTracking) {
+      addToast('Select a size and colour on the product page to check live stock.', 'info');
+      return;
+    }
+    const size = p.sizes?.find(value => !p.soldout?.includes(value)) || '';
+    const color = p.colors?.[0] || '';
+    if (!size || !color) {
+      addToast('This product is currently unavailable.', 'error');
+      return;
+    }
     addToCart({
       id: p.id,
       name: p.name,
@@ -71,7 +79,8 @@ export default function ProductCard({ p }) {
         <button
           className="quick-add-overlay-btn"
           onClick={handleQuickAdd}
-          aria-label={`Quick add ${p.name}`}
+          disabled={p.inventoryTracking}
+          aria-label={p.inventoryTracking ? `View stock options for ${p.name}` : `Quick add ${p.name}`}
         >
           + Quick Add
         </button>

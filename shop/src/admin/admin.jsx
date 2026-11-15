@@ -58,6 +58,8 @@ export default function Admin() {
     orders,
     inventory,
     saveInventoryVariant,
+    reviews,
+    moderateReview,
     addProduct,
     updateProduct,
     deleteProduct,
@@ -212,6 +214,12 @@ export default function Admin() {
             Inventory
           </button>
           <button
+            className={`admin-tab-pill ${activeTab === 'reviews' ? 'active' : ''}`}
+            onClick={() => setActiveTab('reviews')}
+          >
+            Reviews ({reviews.filter(review => review.status === 'pending').length} pending)
+          </button>
+          <button
             className={`admin-tab-pill ${activeTab === 'admins' ? 'active' : ''}`}
             onClick={() => setActiveTab('admins')}
           >
@@ -238,6 +246,9 @@ export default function Admin() {
             inventory={inventory}
             saveInventoryVariant={saveInventoryVariant}
           />
+        )}
+        {activeTab === 'reviews' && (
+          <AdminReviewsSection reviews={reviews} moderateReview={moderateReview} />
         )}
 
         {activeTab === 'admins' && (
@@ -936,6 +947,60 @@ function AdminInventorySection({ products, inventory, saveInventoryVariant }) {
               })}
             </tbody>
           </table>
+        </div>
+      )}
+    </section>
+  );
+}
+
+// -------------------------------------------------------------
+// Customer Review Moderation
+// -------------------------------------------------------------
+function AdminReviewsSection({ reviews, moderateReview }) {
+  const [busyId, setBusyId] = useState('');
+  const handleModeration = async (review, status) => {
+    setBusyId(review.id);
+    try {
+      await moderateReview(review.id, status);
+    } finally {
+      setBusyId('');
+    }
+  };
+
+  return (
+    <section className="admin-products-section">
+      <div className="section-toolbar-row">
+        <div>
+          <h2>Customer reviews</h2>
+          <p className="section-desc">Only reviews from customers with a recorded purchase can be submitted. Approve reviews before they appear publicly.</p>
+        </div>
+      </div>
+      {!reviews.length ? (
+        <div className="admin-empty-state"><p>No reviews have been submitted yet.</p></div>
+      ) : (
+        <div className="admin-cards-grid">
+          {reviews.map(review => (
+            <article className="admin-account-card" key={review.id}>
+              <div className="admin-card-header">
+                <div className="admin-card-title">
+                  <strong>{review.title}</strong>
+                  <span className="admin-card-slot">{'★'.repeat(review.rating)} · {review.status}</span>
+                </div>
+              </div>
+              <p>{review.body}</p>
+              <small>{new Date(review.created_at).toLocaleString()}</small>
+              {review.status === 'pending' && (
+                <div className="admin-card-actions">
+                  <button type="button" className="btn btn-sm btn-primary" disabled={busyId === review.id} onClick={() => handleModeration(review, 'published')}>
+                    {busyId === review.id ? 'Saving…' : 'Approve'}
+                  </button>
+                  <button type="button" className="btn btn-sm btn-outline btn-danger" disabled={busyId === review.id} onClick={() => handleModeration(review, 'rejected')}>
+                    Reject
+                  </button>
+                </div>
+              )}
+            </article>
+          ))}
         </div>
       )}
     </section>

@@ -104,7 +104,7 @@ export default function Checkout() {
       setCompletedOrder({
         order: created,
         waMsg,
-        waUrl: `https://wa.me/${config.whatsapp}?text=${encodeURIComponent(waMsg)}`
+        waUrl: config.whatsapp ? `https://wa.me/${config.whatsapp}?text=${encodeURIComponent(waMsg)}` : null
       });
 
       clearCart();
@@ -125,26 +125,32 @@ export default function Checkout() {
           <span className="receipt-ref-pill">ORDER #{order.id} RECEIVED</span>
           <h1>Thank you, {order.customer_name}!</h1>
           <p className="receipt-sub">
-            Your order has been recorded. Contact our studio concierge on WhatsApp to confirm availability and arrange delivery.
+            {waUrl ? 'Your order has been recorded. Contact our studio concierge on WhatsApp to confirm availability and arrange delivery.' : 'Your order has been recorded, but the store WhatsApp contact is not configured. Contact the store owner with your order reference to arrange delivery.'}
           </p>
 
-          <div className="whatsapp-action-box">
-            <div className="wa-box-header">
-              <span className="wa-icon">💬</span>
-              <div>
-                <strong>Instant Studio Concierge</strong>
-                <p>Seller WhatsApp: +{config.whatsapp}</p>
+          {waUrl ? (
+            <div className="whatsapp-action-box">
+              <div className="wa-box-header">
+                <span className="wa-icon">💬</span>
+                <div>
+                  <strong>Studio Concierge</strong>
+                  <p>Seller WhatsApp: +{config.whatsapp}</p>
+                </div>
               </div>
+              <a
+                href={waUrl}
+                target="_blank"
+                rel="noreferrer"
+                className="btn btn-whatsapp btn-block btn-lg"
+              >
+                Open WhatsApp & Send Order Details →
+              </a>
             </div>
-            <a
-              href={waUrl}
-              target="_blank"
-              rel="noreferrer"
-              className="btn btn-whatsapp btn-block btn-lg"
-            >
-              Open WhatsApp & Send Order Details →
-            </a>
-          </div>
+          ) : (
+            <div className="checkout-alert-error" role="status">
+              Store contact details have not been configured yet. Keep your order reference for the store owner.
+            </div>
+          )}
 
           <div className="receipt-summary-box">
             <h3>Order Overview</h3>

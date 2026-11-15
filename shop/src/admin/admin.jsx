@@ -994,6 +994,8 @@ function AdminReviewsSection({ reviews, moderateReview }) {
     setBusyId(review.id);
     try {
       await moderateReview(review.id, status);
+    } catch (error) {
+      window.alert(error.message || 'Review could not be moderated.');
     } finally {
       setBusyId('');
     }

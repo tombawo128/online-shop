@@ -11,6 +11,7 @@ export default function Home() {
   const [newsletterEmail, setNewsletterEmail] = useState('');
   const [newsletterSuccess, setNewsletterSuccess] = useState(false);
   const [newsletterBusy, setNewsletterBusy] = useState(false);
+  const [newsletterConsent, setNewsletterConsent] = useState(false);
   const [newsletterError, setNewsletterError] = useState('');
 
   const displayedProducts = products
@@ -24,6 +25,10 @@ export default function Home() {
   const handleNewsletter = async (e) => {
     e.preventDefault();
     setNewsletterError('');
+    if (!newsletterConsent) {
+      setNewsletterError('Please confirm that you agree to receive future store updates.');
+      return;
+    }
     const email = newsletterEmail.trim().toLowerCase();
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
       setNewsletterError('Enter a valid email address.');
@@ -35,7 +40,7 @@ export default function Home() {
     }
     setNewsletterBusy(true);
     try {
-      const { error } = await supabase.from('newsletter_subscribers').insert({ email });
+      const { error } = await supabase.from('newsletter_subscribers').insert({ email, consented_at: new Date().toISOString() });
       if (error && error.code !== '23505') {
         setNewsletterError(error.message || 'Subscription could not be saved. Please try again.');
         return;
@@ -227,7 +232,16 @@ export default function Home() {
                 maxLength={254}
                 autoComplete="email"
               />
-              <button type="submit" className="btn btn-primary" disabled={newsletterBusy || !supabase}>
+              <label className="newsletter-consent">
+                <input
+                  type="checkbox"
+                  checked={newsletterConsent}
+                  onChange={event => setNewsletterConsent(event.target.checked)}
+                  required
+                />
+                <span>I agree to receive future Urban Thread store updates by email.</span>
+              </label>
+              <button type="submit" className="btn btn-primary" disabled={newsletterBusy || !supabase || !newsletterConsent}>
                 {newsletterBusy ? 'Subscribing…' : 'Subscribe'}
               </button>
               {newsletterError && <p role="alert" className="newsletter-error">{newsletterError}</p>}

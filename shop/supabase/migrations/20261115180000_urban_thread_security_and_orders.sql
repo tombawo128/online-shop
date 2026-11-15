@@ -28,8 +28,6 @@ as $fn$
 $fn$;
 revoke all on function public.is_store_admin() from public;
 grant execute on function public.is_store_admin() to anon, authenticated;
-revoke all on function public.enforce_store_admin_limit() from public;
-
 create or replace function public.enforce_store_admin_limit()
 returns trigger
 language plpgsql
@@ -46,6 +44,7 @@ begin
   return new;
 end;
 $fn$;
+revoke all on function public.enforce_store_admin_limit() from public;
 drop trigger if exists enforce_store_admin_limit on public.user_roles;
 create trigger enforce_store_admin_limit
 before insert or update of role on public.user_roles

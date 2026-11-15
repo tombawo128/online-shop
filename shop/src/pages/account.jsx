@@ -45,7 +45,7 @@ export default function AccountPage() {
   }
 
   // Filter user orders
-  const myOrders = orders.filter(order => order.user_id === user.id || (order.customer_email && order.customer_email.toLowerCase() === (user.email || '').toLowerCase()));
+  const myOrders = orders.filter(order => order.user_id === user.id);
   const wishlistedProducts = products.filter(p => wishlist.includes(p.id));
 
   const handleSaveShipping = async (e) => {

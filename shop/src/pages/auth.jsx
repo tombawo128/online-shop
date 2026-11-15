@@ -56,8 +56,8 @@ export default function AuthPage({ defaultMode = 'signin' }) {
       setFormError('Please enter a valid email address.');
       return;
     }
-    if (password.length < 4) {
-      setFormError('Password must contain at least 4 characters.');
+    if (password.length < 10) {
+      setFormError('Password must contain at least 10 characters.');
       return;
     }
 
@@ -103,6 +103,9 @@ export default function AuthPage({ defaultMode = 'signin' }) {
         const res = await signup(name, cleanEmail, password, 'customer');
         if (!res.success) {
           setFormError(res.error || 'Registration failed.');
+        } else if (res.requiresEmailConfirmation) {
+          setMode('signin');
+          setFormError('Your account has been created. Check your email for the confirmation link before signing in.');
         } else {
           nav(redirectPath);
         }

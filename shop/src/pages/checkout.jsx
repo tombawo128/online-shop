@@ -4,7 +4,7 @@ import { useStore } from '../context/store.jsx';
 import { config, money } from '../config.js';
 
 export default function Checkout() {
-  const { cart, total, subtotal, discountAmount, discountCode, shippingFee, clearCart, saveOrder, user } = useStore();
+  const { cart, total, subtotal, discountAmount, discountCode, shippingFee, clearCart, saveOrder, user, profile } = useStore();
 
   const [form, setForm] = useState({
     name: '',
@@ -20,26 +20,15 @@ export default function Checkout() {
 
   // Pre-fill user profile if available
   useEffect(() => {
-    try {
-      const savedProfile = JSON.parse(localStorage.getItem('urban_shipping_profile')) || {};
-      setForm(prev => ({
-        ...prev,
-        name: user?.name || savedProfile.name || '',
-        email: user?.email || '',
-        phone: savedProfile.phone || '',
-        state: savedProfile.state || '',
-        location: savedProfile.location || ''
-      }));
-    } catch {
-      if (user) {
-        setForm(prev => ({
-          ...prev,
-          name: user.name || '',
-          email: user.email || ''
-        }));
-      }
-    }
-  }, [user]);
+    setForm(prev => ({
+      ...prev,
+      name: profile?.full_name || user?.name || '',
+      email: user?.email || '',
+      phone: profile?.phone || '',
+      state: profile?.state || '',
+      location: profile?.location || ''
+    }));
+  }, [user, profile]);
 
   const handleChange = (field) => (e) => {
     setForm({ ...form, [field]: e.target.value });
@@ -98,17 +87,7 @@ export default function Checkout() {
     try {
       const created = await saveOrder(orderData);
 
-      // Save shipping profile for future convenience
-      try {
-        localStorage.setItem('urban_shipping_profile', JSON.stringify({
-          name: form.name.trim(),
-          phone: form.phone.trim(),
-          state: form.state.trim(),
-          location: form.location.trim()
-        }));
-      } catch (err) {
-        console.warn(err);
-      }
+
 
       // Format WhatsApp dispatch message
       const confirmedItems = Array.isArray(created.items) ? created.items : [];

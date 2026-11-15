@@ -114,6 +114,7 @@ export function StoreProvider({ children }) {
 
   // --- Auth State ---
   const [user, setUser] = useState(null);
+  const [profile, setProfile] = useState(null);
   const [session, setSession] = useState(undefined);
 
   // --- Toasts State ---
@@ -189,6 +190,7 @@ export function StoreProvider({ children }) {
       setSession(activeSession || null);
       if (!activeSession?.user) {
         setUser(null);
+        setProfile(null);
         setAccounts([]);
         setOrders([]);
         setInventory([]);
@@ -230,6 +232,13 @@ export function StoreProvider({ children }) {
         } else {
           setInventory([]);
         }
+
+        const { data: profileRow, error: profileError } = await supabase
+          .from('customer_profiles')
+          .select('full_name,phone,state,location')
+          .eq('user_id', authUser.id)
+          .maybeSingle();
+        if (!profileError) setProfile(profileRow || null);
 
         const { data: orderRows, error: ordersError } = await supabase
           .from('orders')
@@ -435,9 +444,42 @@ export function StoreProvider({ children }) {
     setSession(null);
     setAccounts([]);
     setOrders([]);
+    setProfile(null);
     addToast('Signed out successfully.', 'info');
     return { success: true };
   }, [addToast]);
+
+  const saveCustomerProfile = useCallback(async (profileData) => {
+    if (!supabase || !user?.id) {
+      throw new Error('Sign in before saving your delivery profile.');
+    }
+    const payload = {
+      user_id: user.id,
+      full_name: String(profileData.full_name || '').trim(),
+      phone: String(profileData.phone || '').trim(),
+      state: String(profileData.state || '').trim(),
+      location: String(profileData.location || '').trim(),
+      updated_at: new Date().toISOString()
+    };
+    if (payload.full_name.length < 2 || payload.full_name.length > 100) {
+      throw new Error('Enter a valid name between 2 and 100 characters.');
+    }
+    if (payload.phone && !/^\\+?[0-9\\s()-]{7,24}$/.test(payload.phone)) {
+      throw new Error('Enter a valid phone number.');
+    }
+    if (payload.state.length > 100 || payload.location.length > 500) {
+      throw new Error('Your delivery details are too long.');
+    }
+    const { data, error } = await supabase
+      .from('customer_profiles')
+      .upsert(payload, { onConflict: 'user_id' })
+      .select('full_name,phone,state,location')
+      .single();
+    if (error) throw new Error(error.message || 'Your profile could not be saved.');
+    setProfile(data);
+    addToast('Delivery profile saved securely.', 'success');
+    return data;
+  }, [user, addToast]);
 
   // --- Order Placement: all prices and totals are recalculated by PostgreSQL ---
   const saveOrder = useCallback(async (orderData) => {
@@ -620,6 +662,8 @@ export function StoreProvider({ children }) {
 
         // User & Accounts & Quotas
         user,
+        profile,
+        saveCustomerProfile,
         session,
         accounts,
         adminAccounts,

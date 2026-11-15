@@ -64,7 +64,8 @@ alter table public.orders
   add column if not exists subtotal numeric(12,2),
   add column if not exists discount numeric(12,2) not null default 0,
   add column if not exists discount_code text,
-  add column if not exists shipping numeric(12,2) not null default 0;
+  add column if not exists shipping numeric(12,2) not null default 0,
+  add column if not exists inventory_restored_at timestamptz;
 
 alter table public.products
   add column if not exists is_active boolean not null default true,
@@ -323,6 +324,42 @@ $fn$;
 revoke all on function public.get_product_variant_availability(uuid) from public;
 grant execute on function public.get_product_variant_availability(uuid) to anon, authenticated;
 
+create or replace function public.restore_cancelled_order_inventory()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $fn$
+declare
+  v_item jsonb;
+begin
+  if new.status = 'cancelled'
+    and old.status is distinct from 'cancelled'
+    and new.inventory_restored_at is null then
+    for v_item in select value from jsonb_array_elements(new.items)
+    loop
+      if coalesce((v_item->>'inventory_tracked')::boolean, false) then
+        update public.product_inventory
+        set quantity = quantity + (v_item->>'qty')::integer,
+            updated_at = now()
+        where product_id = (v_item->>'id')::uuid
+          and size = v_item->>'size'
+          and color = v_item->>'color';
+      end if;
+    end loop;
+    update public.orders
+    set inventory_restored_at = now()
+    where id = new.id;
+  end if;
+  return new;
+end;
+$fn$;
+revoke all on function public.restore_cancelled_order_inventory() from public;
+drop trigger if exists restore_cancelled_order_inventory on public.orders;
+create trigger restore_cancelled_order_inventory
+after update of status on public.orders
+for each row execute function public.restore_cancelled_order_inventory();
+
 create or replace function public.place_store_order(
   p_customer_name text,
   p_customer_email text,
@@ -428,7 +465,8 @@ begin
       'color', v_color,
       'qty', v_qty,
       'price', v_product.price,
-      'image', coalesce(v_product.images[1], '')
+      'image', coalesce(v_product.images[1], ''),
+      'inventory_tracked', v_product.inventory_tracking
     ));
   end loop;
 

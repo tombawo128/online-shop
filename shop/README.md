@@ -1,26 +1,26 @@
 # Urban Thread — Fashion Store
 
-Urban Thread is a responsive fashion e-commerce storefront for women's and men's clothing, built with React, Vite and Supabase.
+Urban Thread is a responsive fashion storefront for women's and men's clothing, built with React, Vite and Supabase.
 
-## Features
+## Current capabilities
 
-- Editorial storefront, database-backed product catalogue, search, category filters and sorting
+- Database-backed product catalogue, search, category filters and sorting
 - Product detail pages with colour and size selection
-- Cart, wishlist, delivery checkout and WhatsApp order handoff
+- Cart, wishlist, checkout and WhatsApp order handoff
 - Customer accounts, private delivery profiles and order history
 - Administrator workspace for products, orders, stock and review moderation
 - Supabase Storage product image uploads with type and size validation
 - Server-validated order creation and database-calculated totals
-- Variant-level stock tracking with atomic stock decrement during order placement and automatic restoration on cancellation
+- Variant-level stock tracking with atomic stock decrement and restoration on cancellation
 - Verified-purchase customer reviews with administrator moderation
 - Newsletter subscriber capture
-- Accessible form labels, validation and loading/error feedback
+- Accessible form labels, validation, and loading/error feedback
 
-**Payment gateway:** intentionally not included. Orders are recorded as pending and the customer can contact the store through WhatsApp to arrange payment separately.
+**Payments:** No payment gateway is connected. Orders are recorded as pending; customers arrange payment separately with the store. WhatsApp is an order-contact channel, not a payment processor.
 
 ## Local development
 
-Use Node.js 20.19+ or 22+.
+Requirements: Node.js 20.19+ (or 22+) and npm.
 
 ```bash
 cd shop
@@ -30,9 +30,9 @@ npm run dev
 
 Open the local URL printed by Vite.
 
-## Environment configuration
+## Environment variables
 
-Copy `.env.example` to `.env` and configure:
+Create `.env` in the `shop` directory:
 
 ```env
 VITE_SUPABASE_URL=https://YOUR_PROJECT_REF.supabase.co
@@ -41,56 +41,67 @@ VITE_SELLER_WHATSAPP=2340000000000
 VITE_ADMIN_PATH=/admin
 ```
 
-The browser key is public by design. **Never put a Supabase service-role key in a `VITE_*` variable or browser code.** All access is controlled by database RLS and trusted database functions.
+The publishable/anon key is intended for browser use. Never put a Supabase service-role or secret key in a `VITE_*` variable or client-side code. Database Row Level Security and trusted database functions enforce access.
 
 ## Supabase setup
 
-For a new project:
+Use a dedicated Supabase project for Urban Thread. For a new project:
 
-1. Run `shop/supabase.sql` once in the Supabase SQL Editor to create the base tables and optional sample catalogue.
-2. Run every SQL file in `shop/supabase/migrations/` in filename order.
-3. Create the owner account through the storefront and confirm its email.
-4. Sign in with that account and visit `/admin` to claim the one-time administrator setup. The database allows exactly one claim; the setup cannot be repeated from the public website.
+1. Run `shop/supabase.sql` once in the Supabase SQL Editor to create the base schema.
+2. Apply the migration files in `shop/supabase/migrations/` in filename order.
+3. In the SQL Editor, authorize the exact owner email (replace the example):
 
-For an existing project, review the migration against the live schema and apply the migration file. Do not rerun the bootstrap seed script against a populated production catalogue.
+   ```sql
+   insert into public.store_admin_setup (singleton, authorized_email)
+   values (true, lower('owner@example.com'));
+   ```
 
-### One-time administrator setup\n\nThe project owner must first authorize the exact owner email in the Supabase SQL Editor (replace the address below with the email that will be used to create the owner account):
+4. Create the account through storefront signup using that email and confirm it.
+5. Sign in and visit `/admin` to claim the one-time administrator slot.
+6. Add real products and stock through the administrator workspace.
 
-```sql
-insert into public.store_admin_setup (singleton, authorized_email)
-values (true, lower('owner@example.com'));
-```
+The database allows one permanent administrator claim. The owner email must be authorized privately before signup; public users cannot grant themselves administrator access.
 
-Then create that account through storefront signup, confirm the email, sign in and visit `/admin` to claim the one-time administrator slot. The `claim_first_store_admin()` database function verifies the signed-in email, serializes concurrent attempts and permanently records the winning account in `public.store_admin_claim`. No administrator registration option is exposed on the public signup page.\n\n### Database protections
+For an existing database, inspect the migrations against the live schema before applying them. Do not rerun the bootstrap SQL against a populated production catalogue.
 
-- Products are publicly readable only while active; product writes require the database-verified administrator role.
-- Orders are readable by their owner and administrators. Direct browser inserts are revoked; the `place_store_order` function validates products, variants, quantities, discounts and shipping and calculates the authoritative totals.
-- Tracked inventory is decremented in the same database transaction as order creation.
+## Data and security model
+
+- Active products are publicly readable; product writes require the database-verified administrator role.
+- Orders are readable by their owner and administrators. Direct browser inserts are revoked; the `place_store_order` function validates products, variants, quantities, discounts and shipping, then calculates authoritative totals.
+- Inventory is decremented in the same transaction as order creation and restored when an eligible order is cancelled.
 - Customer delivery profiles are private to their authenticated owner.
-- Reviews can be submitted only by authenticated users with a paid or delivered order containing the product; new reviews remain pending until approved.
-- Product images are publicly readable, while uploads, updates and deletes require an administrator role. Images are limited to 5 MB and JPEG, PNG, WEBP or AVIF.
+- Reviews require a qualifying purchase and remain pending until administrator approval.
+- Product images are publicly readable; upload, update and delete operations require administrator access. Uploads are limited to 5 MB and JPEG, PNG, WEBP or AVIF.
 - Newsletter addresses can be submitted publicly; only administrators can read the subscriber list.
 
 ## Quality checks
 
+Run from the `shop` directory:
+
 ```bash
 npm run test
 npm run build
-# or run both
+# Run both checks:
 npm run check
 ```
 
-The GitHub Actions workflow runs the same checks on pushes and pull requests.
+GitHub Actions runs the test and build checks on pushes and pull requests.
 
 ## Deployment
 
-Set the Vercel project root directory to `shop`, configure the environment variables above for the correct environments, and deploy the branch preview first. Confirm that the Supabase migration has been applied before enabling the updated storefront.
+Configure the Vercel project with `shop` as its Root Directory. Add the environment variables above to the required deployment environments. Apply and verify the Supabase migrations before enabling the updated storefront.
 
-The `shop/vercel.json` file configures SPA route fallback. Production deployment should follow a successful build, database policy review, authentication test, order validation test, inventory test and admin access test.
+Release checks should include:
+- Production build and automated tests
+- Supabase RLS and database-function review
+- Owner signup and one-time administrator claim
+- Customer authentication and order ownership
+- Order total validation and inventory decrement/restoration
+- Product image upload and access control
+- Mobile and desktop storefront checks
 
-## Important operating notes
+## Explicitly not included
 
-- No demo administrator credentials or client-side password registry are included.
-- If Supabase is not configured, the storefront displays no products and clearly reports that the live catalogue is unavailable. It never substitutes a browser-only sample catalogue.
-- Newsletter signups are stored; an email campaign provider is not connected.
-- WhatsApp order handoff is not a payment processor.
+- Payment gateway or card processing
+- Automated email campaigns/newsletter provider
+- Browser-only demo catalogue or demo administrator credentials

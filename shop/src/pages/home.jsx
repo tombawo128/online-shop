@@ -6,7 +6,7 @@ import { supabase } from '../lib/supabase.js';
 import { Helmet } from 'react-helmet-async';
 
 export default function Home() {
-  const { products, loading, addToast } = useStore();
+  const { products, loading, catalogueError, addToast } = useStore();
   const [filterTab, setFilterTab] = useState('all');
   const [newsletterEmail, setNewsletterEmail] = useState('');
   const [newsletterSuccess, setNewsletterSuccess] = useState(false);
@@ -100,28 +100,28 @@ export default function Home() {
             <span className="prop-icon">📦</span>
             <div className="prop-text">
               <h4>Fast Delivery</h4>
-              <p>Complimentary delivery on orders over $75</p>
+              <p>Delivery fees shown clearly before you place an order</p>
             </div>
           </div>
           <div className="value-prop-card">
             <span className="prop-icon">✨</span>
             <div className="prop-text">
-              <h4>Quality Fabrics</h4>
-              <p>Comfortable, breathable, and made to last</p>
+              <h4>Product Details</h4>
+              <p>Review available sizes, colours and product descriptions</p>
             </div>
           </div>
           <div className="value-prop-card">
             <span className="prop-icon">🔄</span>
             <div className="prop-text">
-              <h4>Easy Returns</h4>
-              <p>30 days to exchange or return without hassle</p>
+              <h4>Order Support</h4>
+              <p>Contact the store directly about your order</p>
             </div>
           </div>
           <div className="value-prop-card">
             <span className="prop-icon">💬</span>
             <div className="prop-text">
-              <h4>Customer Support</h4>
-              <p>Direct assistance on WhatsApp anytime</p>
+              <h4>WhatsApp Assistance</h4>
+              <p>Arrange order and delivery details with the store</p>
             </div>
           </div>
         </div>
@@ -195,6 +195,7 @@ export default function Home() {
           </div>
         </div>
 
+        {catalogueError && <p role="alert" className="newsletter-error">{catalogueError}</p>}
         <Grid items={displayedProducts} loading={loading} />
 
         <div className="arrivals-bottom-cta">

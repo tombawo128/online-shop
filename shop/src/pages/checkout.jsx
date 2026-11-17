@@ -380,7 +380,7 @@ export default function Checkout() {
             </div>
 
             <div className="guarantee-box">
-              <p>🛡️ <strong>Artisan Quality Guarantee:</strong> Every piece is inspected by hand before dispatch. 30 days hassle-free exchange policy.</p>
+              <p>🛡️ <strong>Order confirmation:</strong> Your order is recorded first. The store will contact you to confirm availability, delivery and payment arrangements.</p>
             </div>
           </div>
         </aside>
